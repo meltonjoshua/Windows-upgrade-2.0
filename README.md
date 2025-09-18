@@ -83,14 +83,18 @@ This will:
   - `AUOptions = 4` - Download and install automatically
   - `ScheduledInstallTime = 3` - Install at 3 AM
   - `NoAutoUpdate = 0` - Enable automatic updates
-- Programmatically searches for Windows 11 feature updates
-- Downloads and installs found updates with visible progress
+- **Enhanced Update Detection**: Uses multiple search strategies to find Windows 11 updates
+- **Comprehensive Filtering**: Detects various Windows 11 update patterns (22H2, 21H2, 23H2, 24H2)
+- **Broader Categories**: Searches Feature Packs, Upgrades, Feature Updates, and Critical Updates
+- Downloads and installs found updates with detailed progress reporting
 
 ### Phase 4: Update Triggers
 
-- Executes `usoclient.exe ScanInstallWait` - Forces immediate update scan
-- Runs `wuauclt.exe /detectnow` - Triggers update detection
-- Runs `wuauclt.exe /updatenow` - Forces immediate update installation
+- **Modern Commands**: Executes `usoclient.exe ScanInstallWait`, `StartDownload`, `StartInstall`
+- **Legacy Commands**: Runs `wuauclt.exe /detectnow` and `/updatenow` for compatibility
+- **Multiple Strategies**: Uses both modern and legacy Windows Update mechanisms
+- **Service Configuration**: Configures Windows Update services for feature updates
+- **Immediate Activation**: Forces immediate update detection and download initiation
 
 ### Phase 5: Restart Scheduling
 
@@ -132,7 +136,11 @@ This will:
 - "Hardware bypass registry entries set successfully!"
 - "Windows 11 Installation Assistant running with visible output"
 - "Installation completed"
+- "✓ Installation Assistant started with Process ID: [number]"
+- "✓ Windows 11 updates installed successfully!"
 - "Triggering Windows Update scan..."
+- "✓ All upgrade triggers executed!"
+- "✓ Multiple update mechanisms activated"
 - Restart scheduling confirmation message
 - Visible progress messages and command output
 
@@ -148,8 +156,41 @@ This will:
 
 - Internet connection errors during download
 - Insufficient disk space (requires ~10GB free)
-- Antivirus software blocking registry changes
-- Windows Update service disabled
+- Antivirus software blocking registry changes or download
+- Windows Update service disabled or corrupted
+- "No Windows 11 feature updates found" (may indicate system compatibility issues)
+- Installation Assistant exits quickly (may be normal behavior)
+
+**If Updates Aren't Found:**
+- The system may already be on Windows 11
+- Feature updates might not be available yet for your specific hardware
+- Manual check through Settings > Update & Security may be needed
+- Some systems require multiple script runs to trigger the upgrade
+
+## Recent Improvements (v2.0)
+
+**Enhanced Windows 11 Detection:**
+- Multiple search strategies for comprehensive update discovery
+- Expanded pattern matching for various Windows 11 versions (21H2, 22H2, 23H2, 24H2)
+- Broader category filtering (Feature Packs, Upgrades, Feature Updates, Critical Updates)
+- Description-based filtering for additional coverage
+
+**Improved Update Mechanisms:**
+- Modern USOClient commands (`ScanInstallWait`, `StartDownload`, `StartInstall`)
+- Legacy Windows Update compatibility (`wuauclt.exe`)
+- Enhanced Installation Assistant execution with verification
+- Multiple activation strategies for better success rates
+
+**Better Error Handling:**
+- Comprehensive download verification
+- Process monitoring and validation
+- Detailed progress reporting and troubleshooting information
+- Graceful fallback mechanisms when methods fail
+
+**Additional Registry Bypasses:**
+- Windows 11 compatibility entries
+- Enhanced Windows Update service configuration
+- Broader hardware requirement bypasses
 
 ## Important Notes
 
