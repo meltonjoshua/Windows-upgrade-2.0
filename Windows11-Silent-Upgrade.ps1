@@ -1,6 +1,6 @@
 # Windows 11 Hardware Bypass & Auto-Upgrade Script v3.0
-# Fully automated Windows 10 to 11 upgrade with enhanced reliability
-# Shows all operations and progress in PowerShell
+# Automated Windows 10 to 11 upgrade with visible progress monitoring  
+# Shows all operations and progress in PowerShell and Installation Assistant
 # Based on Ventoy's Windows11Bypass implementation
 
 # Ensure script execution is allowed
@@ -105,20 +105,58 @@ function Download-FileWithProgress {
             Write-LogMessage "URL: $Url" "INFO" "Gray"
             Write-LogMessage "Destination: $OutFile" "INFO" "Gray"
             
-            # Use BITS transfer for better reliability and progress
+            # Use BITS transfer for better reliability with visible progress
             try {
                 Import-Module BitsTransfer -ErrorAction Stop
-                Start-BitsTransfer -Source $Url -Destination $OutFile -Description "Windows 11 Installation Assistant" -DisplayName "Windows 11 Download"
-                Write-LogMessage "✓ Download completed using BITS transfer" "SUCCESS" "Green"
-                return $true
-            } catch {
-                Write-LogMessage "BITS transfer failed, falling back to WebRequest..." "WARNING" "Yellow"
+                Write-LogMessage "Starting Windows 11 Installation Assistant download with progress..." "INFO" "Yellow"
                 
-                # Fallback to WebRequest with progress
-                $webClient = New-Object System.Net.WebClient
-                $webClient.DownloadFile($Url, $OutFile)
-                Write-LogMessage "✓ Download completed using WebRequest" "SUCCESS" "Green"
-                return $true
+                # Start BITS transfer with visible progress monitoring
+                $job = Start-BitsTransfer -Source $Url -Destination $OutFile -Description "Windows 11 Installation Assistant" -DisplayName "Windows 11 Download" -Asynchronous
+                
+                # Monitor download progress
+                do {
+                    Start-Sleep -Seconds 2
+                    $job = Get-BitsTransfer -JobId $job.JobId
+                    if ($job.BytesTotal -gt 0) {
+                        $percentComplete = [math]::Round(($job.BytesTransferred / $job.BytesTotal) * 100, 1)
+                        Write-LogMessage "Download progress: $percentComplete% ($([math]::Round($job.BytesTransferred / 1MB, 1)) MB / $([math]::Round($job.BytesTotal / 1MB, 1)) MB)" "INFO" "Cyan"
+                    }
+                } while ($job.JobState -eq "Transferring")
+                
+                if ($job.JobState -eq "Transferred") {
+                    Complete-BitsTransfer -BitsJob $job
+                    Write-LogMessage "✓ Download completed using BITS transfer" "SUCCESS" "Green"
+                    return $true
+                } else {
+                    Remove-BitsTransfer -BitsJob $job
+                    throw "BITS transfer failed with state: $($job.JobState)"
+                }
+            } catch {
+                Write-LogMessage "BITS transfer failed, falling back to WebRequest with progress..." "WARNING" "Yellow"
+                
+                # Fallback to WebRequest with visible progress
+                try {
+                    $webClient = New-Object System.Net.WebClient
+                    $webClient.add_DownloadProgressChanged({
+                        param($sender, $e)
+                        Write-LogMessage "Download progress: $($e.ProgressPercentage)% ($([math]::Round($e.BytesReceived / 1MB, 1)) MB / $([math]::Round($e.TotalBytesToReceive / 1MB, 1)) MB)" "INFO" "Cyan"
+                    })
+                    
+                    Write-LogMessage "Starting download with progress monitoring..." "INFO" "Yellow"
+                    $webClient.DownloadFileAsync($Url, $OutFile)
+                    
+                    # Wait for download to complete
+                    do {
+                        Start-Sleep -Seconds 1
+                    } while ($webClient.IsBusy)
+                    
+                    $webClient.Dispose()
+                    Write-LogMessage "✓ Download completed using WebRequest" "SUCCESS" "Green"
+                    return $true
+                } catch {
+                    Write-LogMessage "WebRequest download also failed: $($_.Exception.Message)" "ERROR" "Red"
+                    throw "All download methods failed"
+                }
             }
         } catch {
             Write-LogMessage "Download attempt $attempt failed: $($_.Exception.Message)" "ERROR" "Red"
@@ -136,7 +174,7 @@ function Download-FileWithProgress {
 }
 function Windows11-Silent-Auto-Upgrade {
     Write-LogMessage "Starting Windows 11 Hardware Bypass & Auto-Upgrade v3.0..." "INFO" "Green"
-    Write-LogMessage "Enhanced automation with improved reliability and error handling" "INFO" "Yellow"
+    Write-LogMessage "Enhanced automation with visible progress monitoring and error handling" "INFO" "Yellow"
     
     # Initialize log file
     try {
@@ -273,15 +311,16 @@ function Start-SilentWindows11Upgrade {
                 Write-LogMessage "File size: $([math]::Round($fileSize/1MB, 2)) MB" "INFO" "Gray"
                 
                 if ($fileSize -gt 1MB) {
-                    Write-LogMessage "Launching Windows 11 Installation Assistant..." "INFO" "Green"
+                    Write-LogMessage "Launching Windows 11 Installation Assistant with visible progress..." "INFO" "Green"
+                    Write-LogMessage "The Installation Assistant window will be displayed for you to monitor progress." "INFO" "Yellow"
                     
-                    # Enhanced launch parameters for fully automated operation
+                    # Launch parameters for visible operation with progress monitoring
                     $processArgs = @{
                         FilePath = $updateAssistantPath
-                        ArgumentList = @('/quietinstall', '/skipeula', '/auto', '/norestart')
+                        ArgumentList = @('/skipeula', '/auto', '/norestart')
                         Wait = $false
                         PassThru = $true
-                        WindowStyle = 'Hidden'
+                        WindowStyle = 'Normal'
                     }
                     
                     try {
@@ -573,11 +612,11 @@ function Start-SilentWindows11Upgrade {
         Write-LogMessage "✓ Automatic restart configured" "SUCCESS" "White"
         Write-LogMessage "✓ System fully prepared for unattended upgrade" "SUCCESS" "White"
         
-        Write-LogMessage "`nThe upgrade will proceed automatically:" "INFO" "Yellow"
-        Write-LogMessage "• Downloads will begin in the background" "INFO" "Cyan"
-        Write-LogMessage "• Installation will start when ready" "INFO" "Cyan"  
+        Write-LogMessage "`nThe upgrade will proceed with visible progress:" "INFO" "Yellow"
+        Write-LogMessage "• Windows 11 Installation Assistant will show download progress" "INFO" "Cyan"
+        Write-LogMessage "• Installation progress will be visible to monitor" "INFO" "Cyan"  
         Write-LogMessage "• System will restart automatically when upgrade is complete" "INFO" "Cyan"
-        Write-LogMessage "• No further user interaction required" "INFO" "Cyan"
+        Write-LogMessage "• You can monitor progress in the Installation Assistant window" "INFO" "Cyan"
         
         # Final comprehensive trigger
         Write-LogMessage "`nExecuting final comprehensive update scan..." "INFO" "Magenta"
@@ -605,13 +644,13 @@ Write-LogMessage "✓ All operations completed with enhanced error handling" "SU
 Write-LogMessage "✓ System configured for automatic restart" "SUCCESS" "Green"
 Write-LogMessage "✓ Comprehensive logging enabled" "SUCCESS" "Green"
 
-Write-LogMessage "`nNext steps happen automatically:" "INFO" "Yellow"
-Write-LogMessage "• Windows 11 will download in the background" "INFO" "Cyan"
-Write-LogMessage "• Installation will begin when ready" "INFO" "Cyan"
-Write-LogMessage "• System will restart automatically" "INFO" "Cyan"
-Write-LogMessage "• No further user interaction required" "INFO" "Cyan"
+Write-LogMessage "`nNext steps with visible progress:" "INFO" "Yellow"
+Write-LogMessage "• Windows 11 Installation Assistant will show download progress" "INFO" "Cyan"
+Write-LogMessage "• Installation progress will be visible in the assistant window" "INFO" "Cyan"
+Write-LogMessage "• System will restart automatically when ready" "INFO" "Cyan"
+Write-LogMessage "• Monitor progress through the Installation Assistant interface" "INFO" "Cyan"
 
 Write-LogMessage "`nLog file location: $global:LogFile" "INFO" "Yellow"
 Write-LogMessage "Monitor Windows Update in Settings if needed" "INFO" "Cyan"
 
-Write-LogMessage "`n✓ Fully automated Windows 11 upgrade initiated successfully!" "SUCCESS" "Green"
+Write-LogMessage "`n✓ Windows 11 upgrade initiated with visible progress monitoring!" "SUCCESS" "Green"

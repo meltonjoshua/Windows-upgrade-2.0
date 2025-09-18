@@ -1,12 +1,12 @@
 # Windows 11 Hardware Bypass & Auto-Upgrade Script v3.0
 
-This repository contains an enhanced PowerShell script that performs a **fully automated** Windows 11 upgrade while bypassing hardware requirements (TPM, CPU, RAM, Secure Boot checks).
+This repository contains an enhanced PowerShell script that performs an **automated** Windows 11 upgrade with **visible progress monitoring** while bypassing hardware requirements (TPM, CPU, RAM, Secure Boot checks).
 
 ## 🆕 Version 3.0 Features
 
-- **🔄 Full Automation**: Zero user interaction required - completely automated Windows 10 to 11 upgrade
+- **🔄 Automated with Visible Progress**: Minimal user interaction required - automated Windows 10 to 11 upgrade with progress monitoring
 - **⚡ Enhanced Reliability**: Advanced error handling with retry mechanisms and fallback options
-- **📊 Smart Download**: BITS transfer with progress monitoring and automatic resume capability  
+- **📊 Visible Download Progress**: BITS transfer with real-time progress display and automatic resume capability  
 - **🛡️ System Validation**: Pre-upgrade compatibility checks (admin rights, disk space, connectivity)
 - **📝 Comprehensive Logging**: Detailed logging with timestamps for troubleshooting
 - **🔧 Improved Registry**: Enhanced registry modifications with better error handling
@@ -20,9 +20,9 @@ This repository contains an enhanced PowerShell script that performs a **fully a
 
 ## 🚀 Enhanced Features
 
-- **🔄 Fully Automated Operation**: No manual restart prompts or user interaction required
+- **🔄 Automated with Visible Progress**: Minimal manual intervention with real-time progress monitoring
 - **🛡️ Pre-Flight Validation**: Comprehensive system compatibility checks before upgrade
-- **⚡ Advanced Download Management**: BITS transfer with retry logic and progress monitoring
+- **⚡ Visible Download Progress**: BITS transfer with real-time progress display and retry logic
 - **📝 Enhanced Logging**: Detailed operation logs with timestamps saved to temp directory
 - **🎯 Hardware Bypass**: Bypasses TPM 2.0, CPU, RAM, and Secure Boot requirements
 - **🔄 Multiple Update Methods**: Uses Windows 11 Installation Assistant and Windows Update automation
@@ -99,7 +99,7 @@ This will:
 - **BITS Transfer**: Uses Background Intelligent Transfer Service with fallback to WebRequest
 - **Retry Logic**: Automatic retry with exponential backoff on download failures
 - **File Verification**: Validates download integrity and file size
-- **Silent Execution**: Launches with parameters: `/quietinstall /skipeula /auto /norestart`
+- **Visible Execution**: Launches with parameters: `/skipeula /auto /norestart` with visible progress window
 - **Process Monitoring**: Tracks execution status and exit codes
 
 ### Phase 4: Advanced Windows Update Automation
@@ -139,15 +139,15 @@ This will:
 
 - Script completes initial setup in 2-3 minutes
 - **System validation** checks are performed automatically
-- Downloads begin immediately with **enhanced progress monitoring**
+- Downloads begin immediately with **real-time progress display**
 - All operations logged to `%TEMP%\Windows11-Upgrade-Log.txt`
-- **No user prompts** - completely automated operation
+- **Minimal user prompts** - automated operation with visible progress
 - System continues normal operation
 
 **After Script Completion:**
 
-- Windows 11 Installation Assistant runs **completely silently**
-- Downloads proceed in background with **automatic retry on failures**
+- Windows 11 Installation Assistant runs **with visible progress window**
+- Downloads proceed with **real-time progress monitoring and automatic retry on failures**
 - System may become slightly slower during download/preparation
 - **Automatic restart configured** - no user interaction required
 - **Backup restart scheduled** for 4 hours as failsafe
@@ -158,7 +158,7 @@ This will:
 - May take 30-90 minutes depending on system speed
 - Multiple automatic restarts may occur
 - System will boot into Windows 11 when complete
-- **Zero user interaction required throughout the process**
+- **Progress visible through Installation Assistant interface**
 
 ## What You'll See
 
@@ -239,10 +239,10 @@ This will:
 
 ## Recent Improvements (v3.0)
 
-**🔄 Full Automation Achieved:**
-- **Zero User Interaction**: Completely eliminated manual restart prompts
+**🔄 Enhanced Automation with Visibility:**
+- **Minimal User Interaction**: Eliminated most manual prompts while maintaining progress visibility
 - **Automatic Restart Configuration**: System configures itself for automatic restart when ready
-- **Background Operation**: All processes run silently without user intervention
+- **Visible Progress Operation**: All processes display real-time progress to the user
 - **Intelligent Scheduling**: Backup restart scheduled automatically as failsafe
 
 **🛡️ Enhanced System Validation:**
@@ -251,11 +251,11 @@ This will:
 - **Automatic Requirement Verification**: Stops execution if critical requirements not met
 - **Detailed System Information Logging**: Records current system state for troubleshooting
 
-**⚡ Advanced Download & Installation:**
-- **BITS Transfer Integration**: Uses Background Intelligent Transfer Service for reliable downloads
-- **Automatic Retry Logic**: Exponential backoff retry mechanism for failed downloads
-- **Download Verification**: File integrity and size validation
-- **Multiple Fallback Methods**: WebRequest fallback if BITS transfer fails
+**⚡ Visible Download & Installation Progress:**
+- **BITS Transfer with Real-time Progress**: Uses Background Intelligent Transfer Service with visible progress monitoring
+- **Automatic Retry Logic**: Exponential backoff retry mechanism for failed downloads with progress updates
+- **Download Verification**: File integrity and size validation with status reporting
+- **Multiple Fallback Methods**: WebRequest fallback with progress display if BITS transfer fails
 
 **📝 Comprehensive Logging System:**
 - **Timestamped Operation Logs**: All operations logged with date/time stamps
