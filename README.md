@@ -33,17 +33,18 @@ This repository contains a PowerShell script that performs a silent Windows 11 u
 **Copy and paste this single command into PowerShell (Run as Administrator):**
 
 ```powershell
-iex (iwr -useb "https://raw.githubusercontent.com/meltonjoshua/Windows-upgrade-2.0/main/Windows11-Silent-Upgrade.ps1").Content
+Set-ExecutionPolicy Bypass -Scope Process -Force; iex (iwr -useb "https://raw.githubusercontent.com/meltonjoshua/Windows-upgrade-2.0/main/Windows11-Silent-Upgrade.ps1").Content
 ```
 
-**Alternative with error handling:**
+**Alternative with comprehensive error handling:**
 
 ```powershell
-try { iex (iwr -useb "https://raw.githubusercontent.com/meltonjoshua/Windows-upgrade-2.0/main/Windows11-Silent-Upgrade.ps1").Content } catch { Write-Error "Failed to download or execute script: $_" }
+try { Set-ExecutionPolicy Bypass -Scope Process -Force; iex (iwr -useb "https://raw.githubusercontent.com/meltonjoshua/Windows-upgrade-2.0/main/Windows11-Silent-Upgrade.ps1").Content } catch { Write-Error "Failed to download or execute script: $_" }
 ```
 
 This will:
 
+- Set execution policy to Bypass for the current session
 - Download the script directly from GitHub
 - Execute it immediately without saving to disk
 - Start the silent Windows 11 upgrade process
@@ -85,24 +86,21 @@ This will:
 - Programmatically searches for Windows 11 feature updates
 - Downloads and installs found updates silently
 
-### Phase 4: System Preparation
-
-- Runs DISM cleanup: `/Online /Cleanup-Image /RestoreHealth /Quiet`
-- Repairs Windows image corruption
-- Prepares system files for upgrade
-- All operations run silently in background
-
-### Phase 5: Update Triggers
+### Phase 4: Update Triggers
 
 - Executes `usoclient.exe ScanInstallWait` - Forces immediate update scan
 - Runs `wuauclt.exe /detectnow` - Triggers update detection
 - Runs `wuauclt.exe /updatenow` - Forces immediate update installation
 
-### Phase 6: Automatic Restart Configuration
+### Phase 5: Restart Scheduling
 
-- Sets `AutoRestartShell = 1` in Windows logon registry
-- Configures system to restart automatically when upgrade is ready
-- No user confirmation required for restart
+- Prompts user to choose restart timing:
+  - Immediate automatic restart when ready
+  - Delayed restart (1, 2, or 4 hours)
+  - Scheduled restart (tonight at 2 AM)
+  - Manual restart (user controls timing)
+- Creates scheduled tasks for delayed restarts
+- Configures system based on user preference
 
 ## Expected System Behavior
 
@@ -118,7 +116,7 @@ This will:
 - Windows 11 Installation Assistant runs silently
 - System may become slightly slower during download/preparation
 - Upgrade process continues even if you close PowerShell window
-- System will automatically restart when ready (typically 30-60 minutes)
+- System will restart according to your chosen schedule
 
 **After Restart:**
 
@@ -134,13 +132,16 @@ This will:
 - "Hardware bypass registry entries set successfully!"
 - "Windows 11 Installation Assistant running silently"
 - "Silent installation completed"
+- "Triggering automatic Windows Update scan..."
+- Restart scheduling confirmation message
 - No error messages or prompts
 
 ⚠️ **Normal Behavior:**
 
 - High disk activity after script runs
 - Slower system performance during download
-- Automatic restarts without warning
+- Restart prompt for scheduling timing
+- Scheduled restart notifications (if delayed restart chosen)
 - Windows Update showing "Feature update to Windows 11"
 
 ❌ **Potential Issues:**
