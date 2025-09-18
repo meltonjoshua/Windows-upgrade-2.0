@@ -1,9 +1,10 @@
-# Windows 11 Hardware Bypass & Auto-Upgrade Script v3.0
+# Windows 11 Hardware Bypass & Auto-Upgrade Script v3.1
 
-This repository contains an enhanced PowerShell script that performs an **automated** Windows 11 upgrade with **visible progress monitoring** while bypassing hardware requirements (TPM, CPU, RAM, Secure Boot checks).
+This repository contains an enhanced PowerShell script that performs an **automated** Windows 11 upgrade with **PC Health Check automation** and **visible progress monitoring** while bypassing hardware requirements (TPM, CPU, RAM, Secure Boot checks).
 
-## 🆕 Version 3.0 Features
+## 🆕 Version 3.1 Features
 
+- **🏥 PC Health Check Automation**: Automatically downloads, installs, and runs PC Health Check app when required
 - **🔄 Automated with Visible Progress**: Minimal user interaction required - automated Windows 10 to 11 upgrade with progress monitoring
 - **⚡ Enhanced Reliability**: Advanced error handling with retry mechanisms and fallback options
 - **📊 Visible Download Progress**: BITS transfer with real-time progress display and automatic resume capability  
@@ -15,11 +16,12 @@ This repository contains an enhanced PowerShell script that performs an **automa
 
 ## Files
 
-- `Windows11-Silent-Upgrade.ps1` - Enhanced PowerShell script with full automation (v3.0)
+- `Windows11-Silent-Upgrade.ps1` - Enhanced PowerShell script with PC Health Check automation (v3.1)
 - `Run-Windows11-Upgrade.bat` - Batch file wrapper for easy execution
 
 ## 🚀 Enhanced Features
 
+- **🏥 PC Health Check Automation**: Automatically downloads, installs, and runs Microsoft PC Health Check app
 - **🔄 Automated with Visible Progress**: Minimal manual intervention with real-time progress monitoring
 - **🛡️ Pre-Flight Validation**: Comprehensive system compatibility checks before upgrade
 - **⚡ Visible Download Progress**: BITS transfer with real-time progress display and retry logic
@@ -82,7 +84,16 @@ This will:
 - **System information**: Logs current Windows version and available disk space
 - **Automatic validation**: Stops execution if critical requirements not met
 
-### Phase 2: Enhanced Hardware Bypass Setup
+### Phase 2: PC Health Check Automation
+
+- **Automatic Download**: Downloads Microsoft PC Health Check app from official source (aka.ms/GetPCHealthCheckApp)
+- **Silent Installation**: Installs PC Health Check app using msiexec with silent parameters
+- **Automatic Execution**: Launches PC Health Check app to perform compatibility assessment
+- **Process Monitoring**: Monitors PC Health Check execution and handles results automatically
+- **Retry Logic**: Re-runs PC Health Check if needed during Installation Assistant execution
+- **Multiple Location Support**: Finds PC Health Check executable in various installation locations
+
+### Phase 3: Enhanced Hardware Bypass Setup
 
 - Creates registry keys: `HKLM:\System\Setup\LabConfig` and `HKLM:\System\Setup\MoSetup`
 - Sets comprehensive bypass flags with error handling:
@@ -93,16 +104,17 @@ This will:
   - `BypassStorageCheck = 1` - Bypasses storage requirements
   - `AllowUpgradesWithUnsupportedTPMOrCPU = 1` - Forces upgrade permission
 
-### Phase 3: Enhanced Windows 11 Installation Assistant
+### Phase 4: Enhanced Windows 11 Installation Assistant
 
 - **Smart Download**: Downloads official Microsoft Windows 11 Installation Assistant (105MB)
 - **BITS Transfer**: Uses Background Intelligent Transfer Service with fallback to WebRequest
 - **Retry Logic**: Automatic retry with exponential backoff on download failures
 - **File Verification**: Validates download integrity and file size
+- **PC Health Check Integration**: Automatically handles PC Health Check prompts during installation
 - **Visible Execution**: Launches with parameters: `/skipeula /auto /norestart` with visible progress window
-- **Process Monitoring**: Tracks execution status and exit codes
+- **Process Monitoring**: Tracks execution status and exit codes with PC Health Check support
 
-### Phase 4: Advanced Windows Update Automation
+### Phase 5: Advanced Windows Update Automation
 
 - **Enhanced Registry Configuration**: Modifies `HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate`
 - **Automatic Update Settings**: 
@@ -115,7 +127,7 @@ This will:
 - **Category-Based Search**: Searches Feature Packs, Upgrades, Feature Updates, and Critical Updates
 - **Automatic Installation**: Downloads and installs found updates with detailed progress reporting
 
-### Phase 5: Comprehensive Update Triggers
+### Phase 6: Comprehensive Update Triggers
 
 - **Modern USOClient Commands**: Executes `ScanInstallWait`, `RefreshSettings`, `StartDownload`, `StartInstall`
 - **Legacy Windows Update Commands**: Runs `wuauclt.exe /detectnow` and `/updatenow` for compatibility
@@ -124,7 +136,7 @@ This will:
 - **Error Handling**: Each trigger includes comprehensive error handling and logging
 - **Immediate Activation**: Forces immediate update detection and download initiation
 
-### Phase 6: Automatic Restart Configuration
+### Phase 7: Automatic Restart Configuration
 
 - **Zero User Interaction**: Completely automated restart configuration
 - **Primary Method**: Configures automatic restart when upgrade is ready
