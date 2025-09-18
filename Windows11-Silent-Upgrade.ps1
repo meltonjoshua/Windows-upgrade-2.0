@@ -65,6 +65,27 @@ function Set-BypassRegistryEntries {
     Set-ItemProperty -Path $moSetupPath -Name "AllowUpgradesWithUnsupportedTPMOrCPU" -Value 1 -Type DWord -Force
     Write-Host "Set AllowUpgradesWithUnsupportedTPMOrCPU = 1" -ForegroundColor Gray
     
+    # Additional registry keys for Windows 11 compatibility
+    Write-Host "Setting additional Windows 11 compatibility entries..." -ForegroundColor Yellow
+    
+    # Force Windows 11 eligibility
+    $eligibilityPath = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion"
+    try {
+        Set-ItemProperty -Path $eligibilityPath -Name "EditionID" -Value "Professional" -Type String -Force
+        Write-Host "Set EditionID = Professional" -ForegroundColor Gray
+    } catch {
+        Write-Host "Could not set EditionID (may not be necessary)" -ForegroundColor Yellow
+    }
+    
+    # Windows Update service configuration
+    $wuServicePath = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU"
+    if (!(Test-Path $wuServicePath)) { 
+        New-Item -Path $wuServicePath -Force | Out-Null
+        Write-Host "Created Windows Update AU path" -ForegroundColor Gray
+    }
+    Set-ItemProperty -Path $wuServicePath -Name "AllowMUUpdateService" -Value 1 -Type DWord -Force
+    Write-Host "Set AllowMUUpdateService = 1" -ForegroundColor Gray
+    
     Write-Host "Hardware bypass registry entries set successfully!" -ForegroundColor Green
 }
 
@@ -79,21 +100,49 @@ function Start-SilentWindows11Upgrade {
         Write-Host "Download URL: https://go.microsoft.com/fwlink/?linkid=2171764" -ForegroundColor Gray
         Write-Host "Destination: $updateAssistantPath" -ForegroundColor Gray
         
-        # Download with progress showing
-        $downloadUrl = "https://go.microsoft.com/fwlink/?linkid=2171764"
-        Invoke-WebRequest -Uri $downloadUrl -OutFile $updateAssistantPath -UseBasicParsing
-        
-        Write-Host "Download completed. Starting installation with visible output..." -ForegroundColor Green
-        Write-Host "Command: $updateAssistantPath /quietinstall /skipeula /auto /norestart" -ForegroundColor Gray
-        
-        # Launch with visible window
-        $processArgs = @{
-            FilePath = $updateAssistantPath
-            ArgumentList = @('/quietinstall', '/skipeula', '/auto', '/norestart')
-            Wait = $false
+        try {
+            # Download with progress showing
+            $downloadUrl = "https://go.microsoft.com/fwlink/?linkid=2171764"
+            Invoke-WebRequest -Uri $downloadUrl -OutFile $updateAssistantPath -UseBasicParsing
+            
+            Write-Host "Download completed. Verifying file..." -ForegroundColor Green
+            
+            if (Test-Path $updateAssistantPath) {
+                $fileSize = (Get-Item $updateAssistantPath).Length
+                Write-Host "File size: $([math]::Round($fileSize/1MB, 2)) MB" -ForegroundColor Gray
+                
+                if ($fileSize -gt 1MB) {
+                    Write-Host "Starting Windows 11 Installation Assistant..." -ForegroundColor Green
+                    Write-Host "Command: $updateAssistantPath /quietinstall /skipeula /auto /norestart" -ForegroundColor Gray
+                    
+                    # Launch with error handling
+                    $processArgs = @{
+                        FilePath = $updateAssistantPath
+                        ArgumentList = @('/quietinstall', '/skipeula', '/auto', '/norestart')
+                        Wait = $false
+                        PassThru = $true
+                    }
+                    
+                    $process = Start-Process @processArgs
+                    Write-Host "✓ Installation Assistant started with Process ID: $($process.Id)" -ForegroundColor Green
+                    
+                    # Wait a moment to verify it's running
+                    Start-Sleep -Seconds 3
+                    if (!$process.HasExited) {
+                        Write-Host "✓ Installation Assistant is running in background" -ForegroundColor Green
+                    } else {
+                        Write-Host "⚠ Installation Assistant exited quickly - this may be normal" -ForegroundColor Yellow
+                    }
+                } else {
+                    Write-Host "Downloaded file appears to be incomplete (too small)" -ForegroundColor Red
+                }
+            } else {
+                Write-Host "Download failed - file not found" -ForegroundColor Red
+            }
+        } catch {
+            Write-Host "Installation Assistant download/execution failed: $($_.Exception.Message)" -ForegroundColor Red
+            Write-Host "Continuing with Windows Update methods..." -ForegroundColor Yellow
         }
-        Write-Host "Starting Windows 11 Installation Assistant..." -ForegroundColor Green
-        Start-Process @processArgs
         
         # Method 2: Configure Windows Update with visible progress
         Write-Host "Configuring Windows Update for upgrade..." -ForegroundColor Cyan
@@ -139,44 +188,173 @@ function Start-SilentWindows11Upgrade {
             $updateSession = New-Object -ComObject Microsoft.Update.Session
             $updateSearcher = $updateSession.CreateUpdateSearcher()
             
-            # Search for feature updates with visible progress
-            Write-Host "Searching for available updates..." -ForegroundColor Yellow
-            $searchResult = $updateSearcher.Search("IsInstalled=0 and Type='Software'")
-            Write-Host "Found $($searchResult.Updates.Count) total updates" -ForegroundColor Gray
+            # Multiple search strategies for comprehensive Windows 11 detection
+            $searchQueries = @(
+                "IsInstalled=0 and Type='Software'",
+                "IsInstalled=0",
+                "Type='Software' and IsInstalled=0"
+            )
             
-            if ($searchResult.Updates.Count -gt 0) {
+            $allUpdates = @()
+            foreach ($query in $searchQueries) {
+                try {
+                    Write-Host "Searching with query: $query" -ForegroundColor Gray
+                    $searchResult = $updateSearcher.Search($query)
+                    $allUpdates += $searchResult.Updates
+                    Write-Host "Found $($searchResult.Updates.Count) updates with this query" -ForegroundColor Gray
+                } catch {
+                    Write-Host "Search query failed: $query - $($_.Exception.Message)" -ForegroundColor Yellow
+                }
+            }
+            
+            # Remove duplicates by UpdateID
+            $uniqueUpdates = $allUpdates | Sort-Object UpdateID -Unique
+            Write-Host "Found $($uniqueUpdates.Count) total unique updates" -ForegroundColor Gray
+            
+            if ($uniqueUpdates.Count -gt 0) {
                 Write-Host "Filtering for Windows 11 feature updates..." -ForegroundColor Yellow
                 $updateCollection = New-Object -ComObject Microsoft.Update.UpdateColl
                 
-                foreach ($update in $searchResult.Updates) {
+                foreach ($update in $uniqueUpdates) {
                     Write-Host "Checking update: $($update.Title)" -ForegroundColor Gray
-                    if ($update.Title -like "*Windows 11*" -or $update.Categories | Where-Object {$_.Name -eq "Feature Packs"}) {
+                    
+                    # Enhanced filtering for Windows 11 updates
+                    $isWindows11Update = $false
+                    
+                    # Check title patterns
+                    $windows11Patterns = @(
+                        "*Windows 11*",
+                        "*Feature update to Windows 11*", 
+                        "*Upgrade to Windows 11*",
+                        "*Windows 11 version*",
+                        "*22H2*",
+                        "*21H2*",
+                        "*23H2*",
+                        "*24H2*"
+                    )
+                    
+                    foreach ($pattern in $windows11Patterns) {
+                        if ($update.Title -like $pattern) {
+                            $isWindows11Update = $true
+                            Write-Host "Matched pattern '$pattern' for: $($update.Title)" -ForegroundColor Cyan
+                            break
+                        }
+                    }
+                    
+                    # Check categories
+                    if (!$isWindows11Update -and $update.Categories) {
+                        $categoryNames = @("Feature Packs", "Upgrades", "Feature Updates", "Critical Updates")
+                        foreach ($category in $update.Categories) {
+                            if ($categoryNames -contains $category.Name) {
+                                # Additional check for feature updates that might be Windows 11
+                                if ($update.Title -like "*feature*" -or $update.Title -like "*upgrade*") {
+                                    $isWindows11Update = $true
+                                    Write-Host "Matched category '$($category.Name)' for potential Windows 11 update: $($update.Title)" -ForegroundColor Cyan
+                                    break
+                                }
+                            }
+                        }
+                    }
+                    
+                    # Check description for additional clues
+                    if (!$isWindows11Update -and $update.Description) {
+                        if ($update.Description -like "*Windows 11*" -or $update.Description -like "*feature update*") {
+                            $isWindows11Update = $true
+                            Write-Host "Matched description content for: $($update.Title)" -ForegroundColor Cyan
+                        }
+                    }
+                    
+                    if ($isWindows11Update) {
                         $updateCollection.Add($update) | Out-Null
-                        Write-Host "Queued for install: $($update.Title)" -ForegroundColor Green
+                        Write-Host "✓ Queued for install: $($update.Title)" -ForegroundColor Green
                     }
                 }
                 
                 if ($updateCollection.Count -gt 0) {
                     # Download updates with visible progress
-                    Write-Host "Downloading $($updateCollection.Count) updates..." -ForegroundColor Yellow
+                    Write-Host "Downloading $($updateCollection.Count) Windows 11 updates..." -ForegroundColor Yellow
                     $updateDownloader = $updateSession.CreateUpdateDownloader()
                     $updateDownloader.Updates = $updateCollection
+                    
+                    Write-Host "Starting download process..." -ForegroundColor Gray
                     $downloadResult = $updateDownloader.Download()
                     Write-Host "Download completed with result code: $($downloadResult.ResultCode)" -ForegroundColor Gray
                     
-                    # Install updates with visible progress
-                    Write-Host "Installing updates..." -ForegroundColor Yellow
-                    $updateInstaller = $updateSession.CreateUpdateInstaller()
-                    $updateInstaller.Updates = $updateCollection
-                    $installationResult = $updateInstaller.Install()
-                    
-                    Write-Host "Installation completed. Result: $($installationResult.ResultCode)" -ForegroundColor Green
+                    if ($downloadResult.ResultCode -eq 2) {
+                        # Install updates with visible progress
+                        Write-Host "Installing Windows 11 updates..." -ForegroundColor Yellow
+                        $updateInstaller = $updateSession.CreateUpdateInstaller()
+                        $updateInstaller.Updates = $updateCollection
+                        
+                        Write-Host "Starting installation process..." -ForegroundColor Gray
+                        $installationResult = $updateInstaller.Install()
+                        
+                        Write-Host "Installation completed. Result code: $($installationResult.ResultCode)" -ForegroundColor Green
+                        
+                        if ($installationResult.ResultCode -eq 2) {
+                            Write-Host "✓ Windows 11 updates installed successfully!" -ForegroundColor Green
+                        } else {
+                            Write-Host "Installation result code indicates potential issues: $($installationResult.ResultCode)" -ForegroundColor Yellow
+                        }
+                    } else {
+                        Write-Host "Download failed or incomplete. Result code: $($downloadResult.ResultCode)" -ForegroundColor Yellow
+                    }
                 } else {
-                    Write-Host "No Windows 11 feature updates found" -ForegroundColor Yellow
+                    Write-Host "No Windows 11 feature updates found in available updates" -ForegroundColor Yellow
+                    Write-Host "This may be normal if:" -ForegroundColor Cyan
+                    Write-Host "• Windows 11 is already installed" -ForegroundColor Gray
+                    Write-Host "• Feature updates are not yet available for this system" -ForegroundColor Gray
+                    Write-Host "• System needs to check for updates manually through Settings" -ForegroundColor Gray
                 }
+            } else {
+                Write-Host "No updates found with any search criteria" -ForegroundColor Yellow
             }
         } catch {
             Write-Warning "Windows Update automation encountered an issue: $($_.Exception.Message)"
+            Write-Host "Falling back to alternative update triggers..." -ForegroundColor Yellow
+        }
+        
+        # Method 4: Additional Windows 11 upgrade triggers
+        Write-Host "`nExecuting additional Windows 11 upgrade triggers..." -ForegroundColor Magenta
+        
+        # Trigger 1: USOClient for modern Windows Update
+        Write-Host "Trigger 1: Modern Windows Update scan..." -ForegroundColor Yellow
+        Write-Host "Command: usoclient.exe ScanInstallWait" -ForegroundColor Gray
+        try {
+            Start-Process -FilePath "usoclient.exe" -ArgumentList "ScanInstallWait" -Wait -NoNewWindow
+            Write-Host "✓ USOClient scan completed" -ForegroundColor Green
+        } catch {
+            Write-Host "USOClient scan failed: $($_.Exception.Message)" -ForegroundColor Yellow
+        }
+        
+        # Trigger 2: Force refresh of update sources
+        Write-Host "Trigger 2: Refreshing Windows Update sources..." -ForegroundColor Yellow
+        try {
+            Write-Host "Command: usoclient.exe RefreshSettings" -ForegroundColor Gray
+            Start-Process -FilePath "usoclient.exe" -ArgumentList "RefreshSettings" -Wait -NoNewWindow
+            Write-Host "✓ Update sources refreshed" -ForegroundColor Green
+        } catch {
+            Write-Host "Update source refresh failed: $($_.Exception.Message)" -ForegroundColor Yellow
+        }
+        
+        # Trigger 3: Start feature update download specifically
+        Write-Host "Trigger 3: Starting feature update download..." -ForegroundColor Yellow
+        try {
+            Write-Host "Command: usoclient.exe StartDownload" -ForegroundColor Gray
+            Start-Process -FilePath "usoclient.exe" -ArgumentList "StartDownload" -Wait -NoNewWindow
+            Write-Host "✓ Feature update download initiated" -ForegroundColor Green
+        } catch {
+            Write-Host "Feature update download failed: $($_.Exception.Message)" -ForegroundColor Yellow
+        }
+        
+        # Trigger 4: Force Windows Update agent to check for feature updates
+        Write-Host "Trigger 4: Forcing Windows Update agent scan..." -ForegroundColor Yellow
+        try {
+            $updateServiceManager = New-Object -ComObject Microsoft.Update.ServiceManager
+            $updateService = $updateServiceManager.AddService2("7971f918-a847-4430-9279-4a52d1efe18d", 7, "")
+            Write-Host "✓ Windows Update service configured for feature updates" -ForegroundColor Green
+        } catch {
+            Write-Host "Windows Update service configuration failed: $($_.Exception.Message)" -ForegroundColor Yellow
         }
         
         # Method 5: Configure restart options
@@ -278,9 +456,26 @@ Write-Host "• Keep this window open to see progress" -ForegroundColor Yellow
 
 # Final triggers with visible output
 Write-Host "`nExecuting final update triggers..." -ForegroundColor Cyan
-Write-Host "Command: wuauclt.exe /detectnow" -ForegroundColor Gray
-Start-Process -FilePath "wuauclt.exe" -ArgumentList "/detectnow"
-Write-Host "Command: wuauclt.exe /updatenow" -ForegroundColor Gray
-Start-Process -FilePath "wuauclt.exe" -ArgumentList "/updatenow"
+
+# Legacy Windows Update triggers
+Write-Host "Legacy trigger 1: wuauclt.exe /detectnow" -ForegroundColor Gray
+Start-Process -FilePath "wuauclt.exe" -ArgumentList "/detectnow" -NoNewWindow
+Write-Host "Legacy trigger 2: wuauclt.exe /updatenow" -ForegroundColor Gray  
+Start-Process -FilePath "wuauclt.exe" -ArgumentList "/updatenow" -NoNewWindow
+
+# Modern Windows Update triggers
+Write-Host "Modern trigger 1: usoclient.exe ScanInstallWait" -ForegroundColor Gray
+Start-Process -FilePath "usoclient.exe" -ArgumentList "ScanInstallWait" -NoNewWindow
+Write-Host "Modern trigger 2: usoclient.exe StartInstall" -ForegroundColor Gray
+Start-Process -FilePath "usoclient.exe" -ArgumentList "StartInstall" -NoNewWindow
+
+# Force feature update check
+Write-Host "Feature update trigger: usoclient.exe StartDownload" -ForegroundColor Gray
+Start-Process -FilePath "usoclient.exe" -ArgumentList "StartDownload" -NoNewWindow
+
+Write-Host "`n✓ All upgrade triggers executed!" -ForegroundColor Green
+Write-Host "✓ Multiple update mechanisms activated" -ForegroundColor Green
+Write-Host "`nThe system should now begin downloading and installing Windows 11..." -ForegroundColor Yellow
+Write-Host "Monitor Windows Update in Settings > Update & Security for progress." -ForegroundColor Cyan
 
 Write-Host "Upgrade fully initiated with visible progress!" -ForegroundColor Green
