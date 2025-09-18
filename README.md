@@ -1,6 +1,6 @@
-# Windows 11 Silent Hardware Bypass & Auto-Upgrade Script
+# Windows 11 Hardware Bypass & Auto-Upgrade Script
 
-This repository contains a PowerShell script that performs a silent Windows 11 upgrade while bypassing hardware requirements (TPM, CPU, RAM, Secure Boot checks).
+This repository contains a PowerShell script that performs a Windows 11 upgrade with visible progress while bypassing hardware requirements (TPM, CPU, RAM, Secure Boot checks).
 
 ## Files
 
@@ -9,9 +9,9 @@ This repository contains a PowerShell script that performs a silent Windows 11 u
 
 ## Features
 
-- **Silent Operation**: No user prompts or interaction required
+- **Visible Operation**: Shows all operations and progress in PowerShell
 - **Hardware Bypass**: Bypasses TPM 2.0, CPU, RAM, and Secure Boot requirements
-- **Multiple Methods**: Uses Windows 11 Installation Assistant, Windows Update automation, and DISM
+- **Multiple Methods**: Uses Windows 11 Installation Assistant and Windows Update automation
 - **Automatic Restart**: Configures system for automatic restart after upgrade
 - **Registry Modifications**: Sets appropriate registry entries for bypass
 
@@ -47,7 +47,7 @@ This will:
 - Set execution policy to Bypass for the current session
 - Download the script directly from GitHub
 - Execute it immediately without saving to disk
-- Start the silent Windows 11 upgrade process
+- Start the Windows 11 upgrade process with visible progress
 - No local files needed
 
 ## Requirements
@@ -84,7 +84,7 @@ This will:
   - `ScheduledInstallTime = 3` - Install at 3 AM
   - `NoAutoUpdate = 0` - Enable automatic updates
 - Programmatically searches for Windows 11 feature updates
-- Downloads and installs found updates silently
+- Downloads and installs found updates with visible progress
 
 ### Phase 4: Update Triggers
 
@@ -107,15 +107,15 @@ This will:
 **During Execution:**
 
 - Script completes in 2-5 minutes
-- Downloads begin immediately in background
-- No visible windows or prompts appear
+- Downloads begin immediately with visible progress
+- Progress and operations shown in PowerShell window
 - System continues normal operation
 
 **After Script Completion:**
 
-- Windows 11 Installation Assistant runs silently
+- Windows 11 Installation Assistant runs with visible output
 - System may become slightly slower during download/preparation
-- Upgrade process continues even if you close PowerShell window
+- Keep PowerShell window open to monitor progress
 - System will restart according to your chosen schedule
 
 **After Restart:**
@@ -130,11 +130,11 @@ This will:
 ✅ **Success Indicators:**
 
 - "Hardware bypass registry entries set successfully!"
-- "Windows 11 Installation Assistant running silently"
-- "Silent installation completed"
-- "Triggering automatic Windows Update scan..."
+- "Windows 11 Installation Assistant running with visible output"
+- "Installation completed"
+- "Triggering Windows Update scan..."
 - Restart scheduling confirmation message
-- No error messages or prompts
+- Visible progress messages and command output
 
 ⚠️ **Normal Behavior:**
 

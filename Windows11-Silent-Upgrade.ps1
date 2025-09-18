@@ -1,38 +1,48 @@
-# Windows 11 Silent Hardware Bypass & Auto-Upgrade Script
-# Runs completely unattended with no user prompts
+# Windows 11 Hardware Bypass & Auto-Upgrade Script
+# Shows all operations and progress in PowerShell
 # Based on Ventoy's Windows11Bypass implementation
 
 # Ensure script execution is allowed
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
 
 function Windows11-Silent-Auto-Upgrade {
-    Write-Host "Starting SILENT Windows 11 Hardware Bypass & Auto-Upgrade..." -ForegroundColor Green
-    Write-Host "NO USER INTERACTION REQUIRED - Script will handle everything automatically" -ForegroundColor Yellow
+    Write-Host "Starting Windows 11 Hardware Bypass & Auto-Upgrade..." -ForegroundColor Green
+    Write-Host "All operations will be visible in PowerShell" -ForegroundColor Yellow
     
     try {
-        # Set registry bypass entries silently
+        # Set registry bypass entries with visible output
         Set-BypassRegistryEntries
         
-        # Start silent upgrade process
+        # Start upgrade process with visible output
         Start-SilentWindows11Upgrade
         
     } catch {
-        Write-Error "Silent upgrade failed: $($_.Exception.Message)"
+        Write-Error "Upgrade failed: $($_.Exception.Message)"
     }
 }
 
 function Set-BypassRegistryEntries {
     Write-Host "Setting hardware bypass registry entries..." -ForegroundColor Cyan
     
-    # Create registry paths silently
+    # Create registry paths with visible output
     $setupKeyPath = "HKLM:\System\Setup"
     $labConfigPath = "$setupKeyPath\LabConfig"
     $moSetupPath = "$setupKeyPath\MoSetup"
     
-    # Ensure paths exist
-    if (!(Test-Path $setupKeyPath)) { New-Item -Path $setupKeyPath -Force | Out-Null }
-    if (!(Test-Path $labConfigPath)) { New-Item -Path $labConfigPath -Force | Out-Null }
-    if (!(Test-Path $moSetupPath)) { New-Item -Path $moSetupPath -Force | Out-Null }
+    # Ensure paths exist and show progress
+    Write-Host "Creating registry paths..." -ForegroundColor Yellow
+    if (!(Test-Path $setupKeyPath)) { 
+        New-Item -Path $setupKeyPath -Force
+        Write-Host "Created: $setupKeyPath" -ForegroundColor Gray
+    }
+    if (!(Test-Path $labConfigPath)) { 
+        New-Item -Path $labConfigPath -Force
+        Write-Host "Created: $labConfigPath" -ForegroundColor Gray
+    }
+    if (!(Test-Path $moSetupPath)) { 
+        New-Item -Path $moSetupPath -Force
+        Write-Host "Created: $moSetupPath" -ForegroundColor Gray
+    }
     
     # Set comprehensive bypass values
     $bypassValues = @{
@@ -44,93 +54,125 @@ function Set-BypassRegistryEntries {
         "AllowUpgradesWithUnsupportedTPMOrCPU" = 1
     }
     
+    Write-Host "Setting bypass registry values..." -ForegroundColor Yellow
     foreach ($value in $bypassValues.GetEnumerator()) {
         Set-ItemProperty -Path $labConfigPath -Name $value.Key -Value $value.Value -Type DWord -Force
+        Write-Host "Set $($value.Key) = $($value.Value)" -ForegroundColor Gray
     }
     
     # Additional bypass for Windows Update
+    Write-Host "Setting additional Windows Update bypass..." -ForegroundColor Yellow
     Set-ItemProperty -Path $moSetupPath -Name "AllowUpgradesWithUnsupportedTPMOrCPU" -Value 1 -Type DWord -Force
+    Write-Host "Set AllowUpgradesWithUnsupportedTPMOrCPU = 1" -ForegroundColor Gray
     
     Write-Host "Hardware bypass registry entries set successfully!" -ForegroundColor Green
 }
 
 function Start-SilentWindows11Upgrade {
-    Write-Host "Starting SILENT Windows 11 upgrade process..." -ForegroundColor Magenta
+    Write-Host "Starting Windows 11 upgrade process with visible output..." -ForegroundColor Magenta
     
     try {
-        # Method 1: Silent Windows 11 Installation Assistant
+        # Method 1: Windows 11 Installation Assistant with visible output
         $updateAssistantPath = "$env:TEMP\Windows11InstallationAssistant.exe"
         
         Write-Host "Downloading Windows 11 Installation Assistant..." -ForegroundColor Yellow
+        Write-Host "Download URL: https://go.microsoft.com/fwlink/?linkid=2171764" -ForegroundColor Gray
+        Write-Host "Destination: $updateAssistantPath" -ForegroundColor Gray
         
-        # Download with progress suppression
-        $ProgressPreference = 'SilentlyContinue'
+        # Download with progress showing
         $downloadUrl = "https://go.microsoft.com/fwlink/?linkid=2171764"
         Invoke-WebRequest -Uri $downloadUrl -OutFile $updateAssistantPath -UseBasicParsing
         
-        Write-Host "Starting SILENT installation (no prompts)..." -ForegroundColor Green
+        Write-Host "Download completed. Starting installation with visible output..." -ForegroundColor Green
+        Write-Host "Command: $updateAssistantPath /quietinstall /skipeula /auto /norestart" -ForegroundColor Gray
         
-        # Launch with silent parameters
+        # Launch with visible window
         $processArgs = @{
             FilePath = $updateAssistantPath
             ArgumentList = @('/quietinstall', '/skipeula', '/auto', '/norestart')
-            WindowStyle = 'Hidden'
             Wait = $false
         }
+        Write-Host "Starting Windows 11 Installation Assistant..." -ForegroundColor Green
         Start-Process @processArgs
         
-        # Method 2: Force Windows Update to accept upgrade silently
-        Write-Host "Configuring Windows Update for silent upgrade..." -ForegroundColor Cyan
+        # Method 2: Configure Windows Update with visible progress
+        Write-Host "Configuring Windows Update for upgrade..." -ForegroundColor Cyan
         
         # Disable Windows Update prompts
         $wuPath = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate"
-        if (!(Test-Path $wuPath)) { New-Item -Path $wuPath -Force | Out-Null }
+        Write-Host "Creating Windows Update policy path: $wuPath" -ForegroundColor Gray
+        if (!(Test-Path $wuPath)) { 
+            New-Item -Path $wuPath -Force
+            Write-Host "Created Windows Update policy path" -ForegroundColor Gray
+        }
         
+        Write-Host "Setting Windows Update policies..." -ForegroundColor Yellow
         Set-ItemProperty -Path $wuPath -Name "AcceptTrustedPublisherCerts" -Value 1 -Type DWord -Force
+        Write-Host "Set AcceptTrustedPublisherCerts = 1" -ForegroundColor Gray
         Set-ItemProperty -Path $wuPath -Name "ElevateNonAdmins" -Value 1 -Type DWord -Force
+        Write-Host "Set ElevateNonAdmins = 1" -ForegroundColor Gray
         
         # Configure automatic updates
         $auPath = "$wuPath\AU"
-        if (!(Test-Path $auPath)) { New-Item -Path $auPath -Force | Out-Null }
+        Write-Host "Creating Automatic Update path: $auPath" -ForegroundColor Gray
+        if (!(Test-Path $auPath)) { 
+            New-Item -Path $auPath -Force
+            Write-Host "Created Automatic Update path" -ForegroundColor Gray
+        }
         
+        Write-Host "Setting automatic update configuration..." -ForegroundColor Yellow
         Set-ItemProperty -Path $auPath -Name "NoAutoUpdate" -Value 0 -Type DWord -Force
-        Set-ItemProperty -Path $auPath -Name "AUOptions" -Value 4 -Type DWord -Force  # Auto download and install
-        Set-ItemProperty -Path $auPath -Name "ScheduledInstallDay" -Value 0 -Type DWord -Force  # Every day
-        Set-ItemProperty -Path $auPath -Name "ScheduledInstallTime" -Value 3 -Type DWord -Force  # 3 AM
+        Write-Host "Set NoAutoUpdate = 0 (Enable automatic updates)" -ForegroundColor Gray
+        Set-ItemProperty -Path $auPath -Name "AUOptions" -Value 4 -Type DWord -Force
+        Write-Host "Set AUOptions = 4 (Auto download and install)" -ForegroundColor Gray
+        Set-ItemProperty -Path $auPath -Name "ScheduledInstallDay" -Value 0 -Type DWord -Force
+        Write-Host "Set ScheduledInstallDay = 0 (Every day)" -ForegroundColor Gray
+        Set-ItemProperty -Path $auPath -Name "ScheduledInstallTime" -Value 3 -Type DWord -Force
+        Write-Host "Set ScheduledInstallTime = 3 (3 AM)" -ForegroundColor Gray
         
-        # Method 3: Trigger Windows Update programmatically
-        Write-Host "Triggering automatic Windows Update scan..." -ForegroundColor Cyan
+        # Method 3: Trigger Windows Update programmatically with visible progress
+        Write-Host "Triggering Windows Update scan..." -ForegroundColor Cyan
         
         try {
             # Create Windows Update session
+            Write-Host "Creating Windows Update session..." -ForegroundColor Yellow
             $updateSession = New-Object -ComObject Microsoft.Update.Session
             $updateSearcher = $updateSession.CreateUpdateSearcher()
             
-            # Search for feature updates silently
+            # Search for feature updates with visible progress
+            Write-Host "Searching for available updates..." -ForegroundColor Yellow
             $searchResult = $updateSearcher.Search("IsInstalled=0 and Type='Software'")
+            Write-Host "Found $($searchResult.Updates.Count) total updates" -ForegroundColor Gray
             
             if ($searchResult.Updates.Count -gt 0) {
+                Write-Host "Filtering for Windows 11 feature updates..." -ForegroundColor Yellow
                 $updateCollection = New-Object -ComObject Microsoft.Update.UpdateColl
                 
                 foreach ($update in $searchResult.Updates) {
+                    Write-Host "Checking update: $($update.Title)" -ForegroundColor Gray
                     if ($update.Title -like "*Windows 11*" -or $update.Categories | Where-Object {$_.Name -eq "Feature Packs"}) {
                         $updateCollection.Add($update) | Out-Null
-                        Write-Host "Queued for silent install: $($update.Title)" -ForegroundColor Green
+                        Write-Host "Queued for install: $($update.Title)" -ForegroundColor Green
                     }
                 }
                 
                 if ($updateCollection.Count -gt 0) {
-                    # Download updates silently
+                    # Download updates with visible progress
+                    Write-Host "Downloading $($updateCollection.Count) updates..." -ForegroundColor Yellow
                     $updateDownloader = $updateSession.CreateUpdateDownloader()
                     $updateDownloader.Updates = $updateCollection
                     $downloadResult = $updateDownloader.Download()
+                    Write-Host "Download completed with result code: $($downloadResult.ResultCode)" -ForegroundColor Gray
                     
-                    # Install updates silently
+                    # Install updates with visible progress
+                    Write-Host "Installing updates..." -ForegroundColor Yellow
                     $updateInstaller = $updateSession.CreateUpdateInstaller()
                     $updateInstaller.Updates = $updateCollection
                     $installationResult = $updateInstaller.Install()
                     
-                    Write-Host "Silent installation completed. Result: $($installationResult.ResultCode)" -ForegroundColor Green
+                    Write-Host "Installation completed. Result: $($installationResult.ResultCode)" -ForegroundColor Green
+                } else {
+                    Write-Host "No Windows 11 feature updates found" -ForegroundColor Yellow
                 }
             }
         } catch {
@@ -163,21 +205,24 @@ function Start-SilentWindows11Upgrade {
             "2" {
                 # Restart in 1 hour
                 $restartTime = (Get-Date).AddHours(1).ToString("HH:mm")
-                schtasks /create /tn "Windows11UpgradeRestart" /tr "shutdown /r /f /t 0" /sc once /st $restartTime /f | Out-Null
+                Write-Host "Creating scheduled task for restart in 1 hour..." -ForegroundColor Gray
+                schtasks /create /tn "Windows11UpgradeRestart" /tr "shutdown /r /f /t 0" /sc once /st $restartTime /f
                 Write-Host "✓ Scheduled restart for 1 hour from now ($restartTime)" -ForegroundColor Green
                 $restartMessage = "System will restart in 1 hour at $restartTime."
             }
             "3" {
                 # Restart in 2 hours
                 $restartTime = (Get-Date).AddHours(2).ToString("HH:mm")
-                schtasks /create /tn "Windows11UpgradeRestart" /tr "shutdown /r /f /t 0" /sc once /st $restartTime /f | Out-Null
+                Write-Host "Creating scheduled task for restart in 2 hours..." -ForegroundColor Gray
+                schtasks /create /tn "Windows11UpgradeRestart" /tr "shutdown /r /f /t 0" /sc once /st $restartTime /f
                 Write-Host "✓ Scheduled restart for 2 hours from now ($restartTime)" -ForegroundColor Green
                 $restartMessage = "System will restart in 2 hours at $restartTime."
             }
             "4" {
                 # Restart in 4 hours
                 $restartTime = (Get-Date).AddHours(4).ToString("HH:mm")
-                schtasks /create /tn "Windows11UpgradeRestart" /tr "shutdown /r /f /t 0" /sc once /st $restartTime /f | Out-Null
+                Write-Host "Creating scheduled task for restart in 4 hours..." -ForegroundColor Gray
+                schtasks /create /tn "Windows11UpgradeRestart" /tr "shutdown /r /f /t 0" /sc once /st $restartTime /f
                 Write-Host "✓ Scheduled restart for 4 hours from now ($restartTime)" -ForegroundColor Green
                 $restartMessage = "System will restart in 4 hours at $restartTime."
             }
@@ -189,7 +234,8 @@ function Start-SilentWindows11Upgrade {
                 }
                 $restartTime = $tonight2AM.ToString("HH:mm")
                 $restartDate = $tonight2AM.ToString("MM/dd/yyyy")
-                schtasks /create /tn "Windows11UpgradeRestart" /tr "shutdown /r /f /t 0" /sc once /st $restartTime /sd $restartDate /f | Out-Null
+                Write-Host "Creating scheduled task for restart at 2:00 AM..." -ForegroundColor Gray
+                schtasks /create /tn "Windows11UpgradeRestart" /tr "shutdown /r /f /t 0" /sc once /st $restartTime /sd $restartDate /f
                 Write-Host "✓ Scheduled restart for tonight at 2:00 AM" -ForegroundColor Green
                 $restartMessage = "System will restart tonight at 2:00 AM."
             }
@@ -200,38 +246,41 @@ function Start-SilentWindows11Upgrade {
             }
         }
         
-        Write-Host "`n=== SILENT UPGRADE INITIATED ===" -ForegroundColor Green
+        Write-Host "`n=== UPGRADE INITIATED ===" -ForegroundColor Green
         Write-Host "✓ Hardware bypass registry entries active" -ForegroundColor White
-        Write-Host "✓ Windows 11 Installation Assistant running silently" -ForegroundColor White
+        Write-Host "✓ Windows 11 Installation Assistant running with visible output" -ForegroundColor White
         Write-Host "✓ Windows Update configured for automatic installation" -ForegroundColor White
-        Write-Host "✓ System prepared for silent upgrade" -ForegroundColor White
+        Write-Host "✓ System prepared for upgrade with visible progress" -ForegroundColor White
         Write-Host "✓ Restart option configured" -ForegroundColor White
-        Write-Host "`nThe upgrade will proceed WITHOUT any user prompts!" -ForegroundColor Yellow
+        Write-Host "`nThe upgrade will proceed with all operations visible!" -ForegroundColor Yellow
         Write-Host $restartMessage -ForegroundColor Cyan
         
-        # Optional: Force immediate check
+        # Force immediate check with visible output
         Write-Host "`nForcing immediate Windows Update check..." -ForegroundColor Magenta
-        Start-Process -FilePath "usoclient.exe" -ArgumentList "ScanInstallWait" -WindowStyle Hidden
+        Write-Host "Command: usoclient.exe ScanInstallWait" -ForegroundColor Gray
+        Start-Process -FilePath "usoclient.exe" -ArgumentList "ScanInstallWait"
         
     } catch {
-        Write-Error "Silent upgrade initiation failed: $($_.Exception.Message)"
+        Write-Error "Upgrade initiation failed: $($_.Exception.Message)"
         Write-Host "Fallback: Registry bypass entries are still active for manual installation." -ForegroundColor Yellow
     }
 }
 
-# Execute the complete silent upgrade
+# Execute the complete upgrade
 Windows11-Silent-Auto-Upgrade
 
 Write-Host "`n=== SCRIPT COMPLETE ===" -ForegroundColor Red
 Write-Host "• Hardware requirements BYPASSED" -ForegroundColor Green
-Write-Host "• Windows 11 upgrade INITIATED SILENTLY" -ForegroundColor Green  
-Write-Host "• NO user interaction required" -ForegroundColor Green
+Write-Host "• Windows 11 upgrade INITIATED with visible output" -ForegroundColor Green  
+Write-Host "• All operations shown in PowerShell" -ForegroundColor Green
 Write-Host "• System will upgrade and restart automatically" -ForegroundColor Green
-Write-Host "• You can close this window - upgrade continues in background" -ForegroundColor Yellow
+Write-Host "• Keep this window open to see progress" -ForegroundColor Yellow
 
-# Final silent trigger
-Write-Host "`nExecuting final silent triggers..." -ForegroundColor Cyan
-Start-Process -FilePath "wuauclt.exe" -ArgumentList "/detectnow" -WindowStyle Hidden
-Start-Process -FilePath "wuauclt.exe" -ArgumentList "/updatenow" -WindowStyle Hidden
+# Final triggers with visible output
+Write-Host "`nExecuting final update triggers..." -ForegroundColor Cyan
+Write-Host "Command: wuauclt.exe /detectnow" -ForegroundColor Gray
+Start-Process -FilePath "wuauclt.exe" -ArgumentList "/detectnow"
+Write-Host "Command: wuauclt.exe /updatenow" -ForegroundColor Gray
+Start-Process -FilePath "wuauclt.exe" -ArgumentList "/updatenow"
 
-Write-Host "Silent upgrade fully initiated. No further action required!" -ForegroundColor Green
+Write-Host "Upgrade fully initiated with visible progress!" -ForegroundColor Green
