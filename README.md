@@ -1,10 +1,11 @@
-# Windows 11 Hardware Bypass & Auto-Upgrade Script v3.1
+# Windows 11 Hardware Bypass & Auto-Upgrade Script v3.2
 
-This repository contains an enhanced PowerShell script that performs an **automated** Windows 11 upgrade with **PC Health Check automation** and **visible progress monitoring** while bypassing hardware requirements (TPM, CPU, RAM, Secure Boot checks).
+This repository contains an enhanced PowerShell script that performs an **automated** Windows 11 upgrade with **PC Health Check automation and registry bypass** while bypassing hardware requirements (TPM, CPU, RAM, Secure Boot checks).
 
-## 🆕 Version 3.1 Features
+## 🆕 Version 3.2 Features
 
-- **🏥 PC Health Check Automation**: Automatically downloads, installs, and runs PC Health Check app when required
+- **🏥 PC Health Check Automation + Registry Bypass**: Automatically downloads, installs, and configures PC Health Check app to report all requirements as met
+- **🔑 Smart Registry Manipulation**: Sets registry keys to make PC Health Check report compatibility even on incompatible hardware
 - **🔄 Automated with Visible Progress**: Minimal user interaction required - automated Windows 10 to 11 upgrade with progress monitoring
 - **⚡ Enhanced Reliability**: Advanced error handling with retry mechanisms and fallback options
 - **📊 Visible Download Progress**: BITS transfer with real-time progress display and automatic resume capability  
@@ -16,12 +17,13 @@ This repository contains an enhanced PowerShell script that performs an **automa
 
 ## Files
 
-- `Windows11-Silent-Upgrade.ps1` - Enhanced PowerShell script with PC Health Check automation (v3.1)
+- `Windows11-Silent-Upgrade.ps1` - Enhanced PowerShell script with PC Health Check automation + registry bypass (v3.2)
 - `Run-Windows11-Upgrade.bat` - Batch file wrapper for easy execution
 
 ## 🚀 Enhanced Features
 
-- **🏥 PC Health Check Automation**: Automatically downloads, installs, and runs Microsoft PC Health Check app
+- **🏥 PC Health Check Automation + Registry Bypass**: Automatically downloads, installs, and configures PC Health Check app to report compatibility
+- **🔑 Smart Registry Manipulation**: Sets registry entries to make PC Health Check report all requirements as met regardless of actual hardware
 - **🔄 Automated with Visible Progress**: Minimal manual intervention with real-time progress monitoring
 - **🛡️ Pre-Flight Validation**: Comprehensive system compatibility checks before upgrade
 - **⚡ Visible Download Progress**: BITS transfer with real-time progress display and retry logic
@@ -84,11 +86,18 @@ This will:
 - **System information**: Logs current Windows version and available disk space
 - **Automatic validation**: Stops execution if critical requirements not met
 
-### Phase 2: PC Health Check Automation
+### Phase 2: PC Health Check Automation + Registry Bypass
 
 - **Automatic Download**: Downloads Microsoft PC Health Check app from official source (aka.ms/GetPCHealthCheckApp)
 - **Silent Installation**: Installs PC Health Check app using msiexec with silent parameters
-- **Automatic Execution**: Launches PC Health Check app to perform compatibility assessment
+- **Registry Bypass Configuration**: Sets comprehensive registry entries to make PC Health Check report all requirements as met:
+  - `TPMVersion = "2.0"` - Reports TPM 2.0 compatibility
+  - `SecureBootCapable = 1` - Reports Secure Boot capability
+  - `CPUCompatible = 1` - Reports CPU compatibility
+  - `RAMSufficient = 1` - Reports sufficient RAM
+  - `Windows11Ready = 1` - Reports overall Windows 11 readiness
+  - Hardware compatibility override flags for comprehensive bypass
+- **Automatic Execution**: Launches PC Health Check app to perform "compatibility" assessment (will show green/compatible)
 - **Process Monitoring**: Monitors PC Health Check execution and handles results automatically
 - **Retry Logic**: Re-runs PC Health Check if needed during Installation Assistant execution
 - **Multiple Location Support**: Finds PC Health Check executable in various installation locations
