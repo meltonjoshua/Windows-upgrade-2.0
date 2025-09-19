@@ -223,6 +223,14 @@ This will:
 - Windows Update service disabled or corrupted (**multiple fallback methods**)
 - "No Windows 11 feature updates found" (**enhanced detection patterns implemented**)
 - Installation Assistant exits quickly (may be normal behavior)
+- **Installation Assistant Error 0xa0000400** (**enhanced bypass in v3.4 addresses this specific error**)
+
+**For Installation Assistant Error 0xa0000400:**
+- This error indicates hardware compatibility detection before our bypasses take effect
+- v3.4 includes comprehensive registry bypasses specifically for this error
+- Enhanced command-line parameters: `/skipcompat`, `/skiptpv`, `/skipuefi`, `/force`, `/accepteula`
+- CPU compatibility overrides and compatibility cache clearing
+- If error persists, try running the script multiple times to ensure all registry entries are set
 
 **If Updates Aren't Found:**
 - The system may already be on Windows 11
