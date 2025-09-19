@@ -328,6 +328,7 @@ function Set-InstallationAssistantBypass {
             }
         } catch {
             Write-LogMessage "Could not set CPU compatibility override: $($_.Exception.Message)" "WARNING" "Yellow"
+        }
         
         Write-LogMessage "✓ Enhanced Installation Assistant bypass for error 0xa0000400 completed" "SUCCESS" "Green"
         return $true
