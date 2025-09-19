@@ -61,7 +61,7 @@ Set-ExecutionPolicy Bypass -Scope Process -Force; iex (iwr -useb "https://raw.gi
 **Alternative with comprehensive error handling:**
 
 ```powershell
-try { Set-ExecutionPolicy Bypass -Scope Process -Force; iex (iwr -useb "https://raw.githubusercontent.com/meltonjoshua/Windows-upgrade-2.0/main/Windows11-Silent-Upgrade.ps1").Content } catch { Write-Error "Failed to download or execute script: $_" }
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/meltonjoshua/Windows-upgrade-2.0/main/Windows11-Silent-Upgrade.ps1" -OutFile "$env:TEMP\Windows11Upgrade.ps1"; Set-ExecutionPolicy Bypass -Scope Process -Force; & "$env:TEMP\Windows11Upgrade.ps1"
 ```
 
 This will:
