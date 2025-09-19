@@ -1,11 +1,12 @@
-# Windows 11 Hardware Bypass & Auto-Upgrade Script v3.2
+# Windows 11 Hardware Bypass & Auto-Upgrade Script v3.4
 
-This repository contains an enhanced PowerShell script that performs an **automated** Windows 11 upgrade with **PC Health Check automation and registry bypass** while bypassing hardware requirements (TPM, CPU, RAM, Secure Boot checks).
+This repository contains an enhanced PowerShell script that performs an **automated** Windows 11 upgrade with **comprehensive hardware compatibility bypass** including PC Health Check automation, Installation Assistant bypass, and registry manipulation while bypassing all hardware requirements (TPM, CPU, RAM, Secure Boot checks).
 
-## 🆕 Version 3.2 Features
+## 🆕 Version 3.4 Features
 
-- **🏥 PC Health Check Automation + Registry Bypass**: Automatically downloads, installs, and configures PC Health Check app to report all requirements as met
-- **🔑 Smart Registry Manipulation**: Sets registry keys to make PC Health Check report compatibility even on incompatible hardware
+- **🏥 PC Health Check Automation + Enhanced Registry Bypass**: Automatically downloads, installs, and configures PC Health Check app with comprehensive compatibility reporting
+- **🚀 Installation Assistant Hardware Bypass**: Advanced registry bypass specifically for Windows 11 Installation Assistant hardware detection
+- **🔑 Comprehensive Registry Manipulation**: Sets multiple registry paths to bypass hardware checks at all detection levels
 - **🔄 Automated with Visible Progress**: Minimal user interaction required - automated Windows 10 to 11 upgrade with progress monitoring
 - **⚡ Enhanced Reliability**: Advanced error handling with retry mechanisms and fallback options
 - **📊 Visible Download Progress**: BITS transfer with real-time progress display and automatic resume capability  
@@ -17,13 +18,15 @@ This repository contains an enhanced PowerShell script that performs an **automa
 
 ## Files
 
-- `Windows11-Silent-Upgrade.ps1` - Enhanced PowerShell script with PC Health Check automation + registry bypass (v3.2)
+- `Windows11-Silent-Upgrade.ps1` - Enhanced PowerShell script with comprehensive hardware bypass automation (v3.4)
 - `Run-Windows11-Upgrade.bat` - Batch file wrapper for easy execution
 
 ## 🚀 Enhanced Features
 
-- **🏥 PC Health Check Automation + Registry Bypass**: Automatically downloads, installs, and configures PC Health Check app to report compatibility
-- **🔑 Smart Registry Manipulation**: Sets registry entries to make PC Health Check report all requirements as met regardless of actual hardware
+- **🏥 PC Health Check Automation + Enhanced Registry Bypass**: Automatically downloads, installs, and configures PC Health Check app with comprehensive compatibility reporting
+- **🚀 Installation Assistant Hardware Bypass**: Advanced registry bypass specifically targeting Windows 11 Installation Assistant hardware detection before it runs
+- **🔑 Comprehensive Registry Manipulation**: Sets multiple registry paths including HwReqChk, CompatMarkers cleanup, PCHC UpgradeEligibility, and hardware simulation values
+- **🔄 Dual-Layer Bypass Strategy**: Combines PC Health Check bypass with Installation Assistant bypass for comprehensive coverage
 - **🔄 Automated with Visible Progress**: Minimal manual intervention with real-time progress monitoring
 - **🛡️ Pre-Flight Validation**: Comprehensive system compatibility checks before upgrade
 - **⚡ Visible Download Progress**: BITS transfer with real-time progress display and retry logic
@@ -86,23 +89,30 @@ This will:
 - **System information**: Logs current Windows version and available disk space
 - **Automatic validation**: Stops execution if critical requirements not met
 
-### Phase 2: PC Health Check Automation + Registry Bypass
+### Phase 2: PC Health Check Automation + Enhanced Registry Bypass
 
 - **Automatic Download**: Downloads Microsoft PC Health Check app from official source (aka.ms/GetPCHealthCheckApp)
 - **Silent Installation**: Installs PC Health Check app using msiexec with silent parameters
-- **Registry Bypass Configuration**: Sets comprehensive registry entries to make PC Health Check report all requirements as met:
-  - `TPMVersion = "2.0"` - Reports TPM 2.0 compatibility
-  - `SecureBootCapable = 1` - Reports Secure Boot capability
-  - `CPUCompatible = 1` - Reports CPU compatibility
-  - `RAMSufficient = 1` - Reports sufficient RAM
-  - `Windows11Ready = 1` - Reports overall Windows 11 readiness
-  - Hardware compatibility override flags for comprehensive bypass
+- **Enhanced Registry Bypass Configuration**: Sets comprehensive registry entries using proven bypass techniques:
+  - **Hardware Compatibility Simulation**: `HwReqChkVars` with `SQ_SecureBootCapable=TRUE`, `SQ_SecureBootEnabled=TRUE`, `SQ_TpmVersion=2`, `SQ_RamMB=8192`
+  - **Upgrade Failure Record Cleanup**: Removes `CompatMarkers`, `Shared`, and `TargetVersionUpgradeExperienceIndicators` registry entries
+  - **PC Health Check Eligibility**: Sets `HKCU\Software\Microsoft\PCHC\UpgradeEligibility = 1` for Upgrade Assistant compatibility
+  - **Official Microsoft Bypass**: Sets `AllowUpgradesWithUnsupportedTPMOrCPU = 1` in MoSetup registry path
 - **Automatic Execution**: Launches PC Health Check app to perform "compatibility" assessment (will show green/compatible)
 - **Process Monitoring**: Monitors PC Health Check execution and handles results automatically
 - **Retry Logic**: Re-runs PC Health Check if needed during Installation Assistant execution
 - **Multiple Location Support**: Finds PC Health Check executable in various installation locations
 
-### Phase 3: Enhanced Hardware Bypass Setup
+### Phase 3: Installation Assistant Hardware Bypass
+
+- **Preemptive Registry Configuration**: Sets Installation Assistant-specific bypass entries before the tool runs
+- **TPM Bypass**: Configures registry to report TPM 2.0 compatibility regardless of actual hardware
+- **Secure Boot Bypass**: Sets Secure Boot capability and enablement flags in registry
+- **CPU Compatibility Override**: Forces CPU compatibility reporting for unsupported processors
+- **Device Guard Bypass**: Disables Device Guard compatibility checks that may block installation
+- **Comprehensive Hardware Spoofing**: Creates fake hardware profile that passes all Installation Assistant checks
+
+### Phase 4: Enhanced Hardware Bypass Setup
 
 - Creates registry keys: `HKLM:\System\Setup\LabConfig` and `HKLM:\System\Setup\MoSetup`
 - Sets comprehensive bypass flags with error handling:
@@ -258,7 +268,25 @@ This will:
 4. Monitor download progress in Windows Update settings
 5. Restart system manually if automatic restart doesn't occur after 4+ hours
 
-## Recent Improvements (v3.0)
+## Recent Improvements (v3.4)
+
+**🚀 Installation Assistant Hardware Bypass:**
+- **Preemptive Registry Configuration**: Sets Installation Assistant-specific bypass entries before the tool runs
+- **TPM 2.0 Simulation**: Creates fake TPM 2.0 registry entries that pass Installation Assistant hardware detection
+- **Secure Boot Spoofing**: Forces Secure Boot capability and enablement reporting in registry
+- **CPU Compatibility Override**: Bypasses unsupported CPU detection with comprehensive registry entries
+
+**🔑 Enhanced PC Health Check Bypass:**
+- **Hardware Compatibility Simulation**: Uses Microsoft's own HwReqChk registry entries for hardware spoofing
+- **Upgrade Failure Record Cleanup**: Removes legacy upgrade failure flags that may block future attempts
+- **PC Health Check Eligibility**: Sets HKCU UpgradeEligibility flag required by Windows 11 Upgrade Assistant
+- **Dual-Layer Bypass Strategy**: Combines PC Health Check bypass with Installation Assistant bypass
+
+**🛡️ Comprehensive Hardware Spoofing:**
+- **Multiple Registry Paths**: Sets bypass entries in HwReqChk, MoSetup, LabConfig, and PCHC registry locations
+- **Device Guard Bypass**: Disables Device Guard compatibility checks that may interfere with installation
+- **Official Microsoft Bypass**: Uses AllowUpgradesWithUnsupportedTPMOrCPU documented by Microsoft
+- **Hardware Profile Creation**: Creates complete fake hardware profile that passes all compatibility checks
 
 **🔄 Enhanced Automation with Visibility:**
 - **Minimal User Interaction**: Eliminated most manual prompts while maintaining progress visibility
@@ -316,13 +344,13 @@ The script modifies these registry paths with enhanced error handling:
 
 ## Compatibility
 
-This enhanced script (v3.0) is based on the Ventoy Windows11Bypass implementation and includes significant improvements for reliability and automation. It should work on most Windows 10 systems that don't meet Windows 11 hardware requirements.
+This enhanced script (v3.4) is based on proven Windows 11 bypass techniques and includes comprehensive improvements for reliability and automation. It should work on most Windows 10 systems that don't meet Windows 11 hardware requirements.
 
-**New in v3.0:**
-- Enhanced compatibility checks before execution
-- Improved error handling for various system configurations  
-- Better support for different Windows 10 editions and builds
-- Automatic fallback methods for challenging network environments
+**New in v3.4:**
+- Installation Assistant-specific hardware bypass before tool execution
+- Enhanced PC Health Check bypass using Microsoft's own HwReqChk registry entries
+- Comprehensive hardware spoofing across multiple registry paths
+- Dual-layer bypass strategy for maximum compatibility coverage
 
 ## License
 

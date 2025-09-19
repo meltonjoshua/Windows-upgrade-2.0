@@ -375,22 +375,96 @@ function Find-PCHealthCheckExecutable {
 
 # PC Health Check Registry Bypass function
 function Set-PCHealthCheckBypass {
-    Write-LogMessage "Setting PC Health Check registry bypass entries..." "INFO" "Cyan"
+    Write-LogMessage "Setting enhanced PC Health Check registry bypass entries..." "INFO" "Cyan"
     
     try {
-        # PC Health Check stores its findings in various registry locations
-        # We'll set these to make it report all requirements as met
+        # Step 1: Clear old upgrade failure records (from gist technique)
+        Write-LogMessage "Step 1: Clearing old upgrade failure records..." "INFO" "Yellow"
         
-        # Main PC Health Check registry path
+        $failureRecordPaths = @(
+            "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\CompatMarkers",
+            "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Shared",
+            "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\TargetVersionUpgradeExperienceIndicators"
+        )
+        
+        foreach ($path in $failureRecordPaths) {
+            try {
+                if (Test-Path $path) {
+                    Remove-Item -Path $path -Recurse -Force -ErrorAction Stop
+                    Write-LogMessage "Removed upgrade failure record: $path" "SUCCESS" "Gray"
+                } else {
+                    Write-LogMessage "Path not found (OK): $path" "SUCCESS" "Gray"
+                }
+            } catch {
+                Write-LogMessage "Could not remove $path - $($_.Exception.Message)" "WARNING" "Yellow"
+            }
+        }
+        
+        # Step 2: Hardware compatibility simulation using HwReqChk (from gist technique)
+        Write-LogMessage "Step 2: Simulating hardware compatibility..." "INFO" "Yellow"
+        
+        try {
+            $hwReqChkPath = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\HwReqChk"
+            if (!(Test-Path $hwReqChkPath)) {
+                New-Item -Path $hwReqChkPath -Force -ErrorAction Stop | Out-Null
+            }
+            
+            # Set hardware compatibility simulation values exactly as in the gist
+            $hwReqChkValues = @(
+                "SQ_SecureBootCapable=TRUE",
+                "SQ_SecureBootEnabled=TRUE", 
+                "SQ_TpmVersion=2",
+                "SQ_RamMB=8192"
+            )
+            
+            Set-ItemProperty -Path $hwReqChkPath -Name "HwReqChkVars" -Value $hwReqChkValues -Type MultiString -Force
+            Write-LogMessage "Set hardware compatibility simulation values" "SUCCESS" "Gray"
+            
+        } catch {
+            Write-LogMessage "Could not set hardware compatibility simulation: $($_.Exception.Message)" "WARNING" "Yellow"
+        }
+        
+        # Step 3: Allow upgrades on unsupported TPM or CPU (official Microsoft bypass)
+        Write-LogMessage "Step 3: Enabling official Microsoft bypass..." "INFO" "Yellow"
+        
+        try {
+            $moSetupPath = "HKLM:\SYSTEM\Setup\MoSetup"
+            if (!(Test-Path $moSetupPath)) {
+                New-Item -Path $moSetupPath -Force -ErrorAction Stop | Out-Null
+            }
+            
+            Set-ItemProperty -Path $moSetupPath -Name "AllowUpgradesWithUnsupportedTPMOrCPU" -Value 1 -Type DWord -Force
+            Write-LogMessage "Set AllowUpgradesWithUnsupportedTPMOrCPU = 1" "SUCCESS" "Gray"
+            
+        } catch {
+            Write-LogMessage "Could not set Microsoft bypass flag: $($_.Exception.Message)" "WARNING" "Yellow"
+        }
+        
+        # Step 4: Set PC Health Check eligibility flag (from gist technique)
+        Write-LogMessage "Step 4: Setting PC Health Check eligibility flag..." "INFO" "Yellow"
+        
+        try {
+            $pchcPath = "HKCU:\Software\Microsoft\PCHC"
+            if (!(Test-Path $pchcPath)) {
+                New-Item -Path $pchcPath -Force -ErrorAction Stop | Out-Null
+            }
+            
+            Set-ItemProperty -Path $pchcPath -Name "UpgradeEligibility" -Value 1 -Type DWord -Force
+            Write-LogMessage "Set PCHC UpgradeEligibility = 1" "SUCCESS" "Gray"
+            
+        } catch {
+            Write-LogMessage "Could not set PC Health Check eligibility: $($_.Exception.Message)" "WARNING" "Yellow"
+        }
+        
+        # Step 5: Legacy PC Health Check compatibility values (enhanced)
+        Write-LogMessage "Step 5: Setting legacy PC Health Check values..." "INFO" "Yellow"
+        
+        # PC Health Check stores its findings in various registry locations
         $pcHealthPath = "HKLM:\SOFTWARE\Microsoft\PCHealthCheck"
         $pcHealthUserPath = "HKCU:\SOFTWARE\Microsoft\PCHealthCheck"
         
-        # Windows 11 readiness paths
-        $readinessPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppReadiness"
-        $compatibilityPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppCompatFlags"
-        
         # Create registry paths if they don't exist
-        $paths = @($pcHealthPath, $pcHealthUserPath, $readinessPath, $compatibilityPath)
+        $paths = @($pcHealthPath, $pcHealthUserPath)
         foreach ($path in $paths) {
             if (!(Test-Path $path)) {
                 try {
@@ -419,33 +493,20 @@ function Set-PCHealthCheckBypass {
             "OverallCompatibility" = "Compatible"
         }
         
-        Write-LogMessage "Setting PC Health Check compatibility values..." "INFO" "Yellow"
         foreach ($value in $pcHealthValues.GetEnumerator()) {
             try {
                 # Set in both HKLM and HKCU for comprehensive coverage
                 Set-ItemProperty -Path $pcHealthPath -Name $value.Key -Value $value.Value -Force -ErrorAction SilentlyContinue
                 Set-ItemProperty -Path $pcHealthUserPath -Name $value.Key -Value $value.Value -Force -ErrorAction SilentlyContinue
-                Write-LogMessage "Set $($value.Key) = $($value.Value)" "SUCCESS" "Gray"
+                Write-LogMessage "Set legacy PC Health Check: $($value.Key) = $($value.Value)" "SUCCESS" "Gray"
             } catch {
                 Write-LogMessage "Could not set $($value.Key): $($_.Exception.Message)" "WARNING" "Yellow"
             }
         }
         
-        # Additional Windows 11 compatibility flags
-        try {
-            $win11CompatPath = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Compatibility Assistant\Store"
-            if (!(Test-Path $win11CompatPath)) {
-                New-Item -Path $win11CompatPath -Force -ErrorAction Stop | Out-Null
-            }
-            
-            # Set compatibility flags for Windows 11
-            Set-ItemProperty -Path $win11CompatPath -Name "Windows11Compatible" -Value 1 -Type DWord -Force -ErrorAction SilentlyContinue
-            Write-LogMessage "Set Windows 11 compatibility flag" "SUCCESS" "Gray"
-        } catch {
-            Write-LogMessage "Could not set Windows 11 compatibility flag: $($_.Exception.Message)" "WARNING" "Yellow"
-        }
+        # Step 6: Additional hardware compatibility flags
+        Write-LogMessage "Step 6: Setting additional hardware compatibility flags..." "INFO" "Yellow"
         
-        # Set hardware compatibility override flags
         try {
             $hardwareCompatPath = "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Environment"
             $hardwareFlags = @{
@@ -466,7 +527,7 @@ function Set-PCHealthCheckBypass {
             Write-LogMessage "Could not set hardware compatibility overrides: $($_.Exception.Message)" "WARNING" "Yellow"
         }
         
-        # Create fake TPM and Secure Boot entries for PC Health Check
+        # Step 7: Create fake TPM and Secure Boot entries for PC Health Check
         try {
             $tpmPath = "HKLM:\SYSTEM\CurrentControlSet\Services\TPM"
             if (!(Test-Path $tpmPath)) {
@@ -485,11 +546,12 @@ function Set-PCHealthCheckBypass {
             Write-LogMessage "Could not set TPM/Secure Boot overrides: $($_.Exception.Message)" "WARNING" "Yellow"
         }
         
-        Write-LogMessage "✓ PC Health Check registry bypass configuration completed" "SUCCESS" "Green"
+        Write-LogMessage "✓ Enhanced PC Health Check registry bypass configuration completed" "SUCCESS" "Green"
+        Write-LogMessage "✓ Applied proven bypass techniques from Windows 11 upgrade community" "SUCCESS" "Green"
         return $true
         
     } catch {
-        Write-LogMessage "PC Health Check registry bypass failed: $($_.Exception.Message)" "ERROR" "Red"
+        Write-LogMessage "Enhanced PC Health Check registry bypass failed: $($_.Exception.Message)" "ERROR" "Red"
         return $false
     }
 }
@@ -732,7 +794,7 @@ function Handle-PCHealthCheckRequirement {
 }
 
 function Windows11-Silent-Auto-Upgrade {
-    Write-LogMessage "Starting Windows 11 Hardware Bypass & Auto-Upgrade v3.3..." "INFO" "Green"
+    Write-LogMessage "Starting Windows 11 Hardware Bypass & Auto-Upgrade v3.4..." "INFO" "Green"
     Write-LogMessage "Enhanced automation with PC Health Check and Installation Assistant bypass" "INFO" "Yellow"
     
     # Initialize log file
