@@ -1,274 +1,114 @@
-# Windows 11 Hardware Bypass & Auto-Upgrade Script v3.5
-# Fixed version - all syntax errors corrected
-# Run as Administrator for best results
+# Windows 11 Hardware Bypass & Silent Upgrade Script v4.0
+# Simple and reliable version
 
-param(
-    [switch]$Force,
-    [switch]$Quiet
-)
-
-# Ensure script execution is allowed
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
-
-# Global variables
-$global:LogFile = "$env:TEMP\Windows11-Upgrade-Log.txt"
-
-# Enhanced logging function
-function Write-LogMessage {
-    param(
-        [string]$Message,
-        [string]$Level = "INFO",
-        [string]$Color = "White"
-    )
-    
-    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-    $logEntry = "[$timestamp] [$Level] $Message"
-    
-    # Write to console with color
-    Write-Host $Message -ForegroundColor $Color
-    
-    # Write to log file
-    try {
-        Add-Content -Path $global:LogFile -Value $logEntry -ErrorAction SilentlyContinue
-    } catch {
-        # Silently continue if logging fails
-    }
+# Ensure running as Administrator
+if (-NOT ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
+    Write-Host "ERROR: This script must be run as Administrator!" -ForegroundColor Red
+    Write-Host "Right-click and select 'Run as Administrator'" -ForegroundColor Red
+    exit 1
 }
 
-# Check if running as Administrator
-function Test-Administrator {
-    $currentUser = [Security.Principal.WindowsIdentity]::GetCurrent()
-    $principal = New-Object Security.Principal.WindowsPrincipal($currentUser)
-    return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+Write-Host "Windows 11 Hardware Bypass & Silent Upgrade v4.0" -ForegroundColor Green
+Write-Host "Setting hardware bypass registry entries..." -ForegroundColor Yellow
+
+try {
+    # Create registry paths
+    $setupPath = "HKLM:\System\Setup"
+    $labConfigPath = "$setupPath\LabConfig"
+    $moSetupPath = "$setupPath\MoSetup"
+    
+    # Ensure paths exist
+    if (!(Test-Path $setupPath)) { New-Item -Path $setupPath -Force | Out-Null }
+    if (!(Test-Path $labConfigPath)) { New-Item -Path $labConfigPath -Force | Out-Null }
+    if (!(Test-Path $moSetupPath)) { New-Item -Path $moSetupPath -Force | Out-Null }
+    
+    # Set bypass values
+    Set-ItemProperty -Path $labConfigPath -Name "BypassRAMCheck" -Value 1 -Type DWord -Force
+    Set-ItemProperty -Path $labConfigPath -Name "BypassTPMCheck" -Value 1 -Type DWord -Force
+    Set-ItemProperty -Path $labConfigPath -Name "BypassCPUCheck" -Value 1 -Type DWord -Force
+    Set-ItemProperty -Path $labConfigPath -Name "BypassSecureBootCheck" -Value 1 -Type DWord -Force
+    Set-ItemProperty -Path $labConfigPath -Name "BypassStorageCheck" -Value 1 -Type DWord -Force
+    Set-ItemProperty -Path $moSetupPath -Name "AllowUpgradesWithUnsupportedTPMOrCPU" -Value 1 -Type DWord -Force
+    
+    Write-Host "SUCCESS: Hardware bypass registry entries set!" -ForegroundColor Green
+    
+} catch {
+    Write-Host "ERROR: Failed to set registry entries - $($_.Exception.Message)" -ForegroundColor Red
+    exit 1
 }
 
-# System compatibility check
-function Test-SystemCompatibility {
-    Write-LogMessage "Performing system compatibility check..." "INFO" "Cyan"
-    
-    $issues = @()
-    
-    # Check if running as Administrator
-    if (-not (Test-Administrator)) {
-        $issues += "Script must be run as Administrator"
-    }
-    
-    # Check Windows version
-    $buildNumber = (Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion").CurrentBuild
-    
-    if ($buildNumber -ge 22000) {
-        Write-LogMessage "System is already running Windows 11 (Build: $buildNumber)" "WARNING" "Yellow"
-        return $true
-    }
-    
-    # Check available disk space (minimum 20GB)
-    $systemDrive = $env:SystemDrive
-    $freeSpace = (Get-WmiObject -Class Win32_LogicalDisk -Filter "DeviceID='$systemDrive'").FreeSpace
-    $freeSpaceGB = [Math]::Round($freeSpace / 1GB, 2)
-    
-    if ($freeSpaceGB -lt 20) {
-        $issues += "Insufficient disk space. Available: $freeSpaceGB GB, Required: 20 GB"
-    }
-    
-    if ($issues.Count -gt 0) {
-        Write-LogMessage "System compatibility issues found:" "ERROR" "Red"
-        foreach ($issue in $issues) {
-            Write-LogMessage "  • $issue" "ERROR" "Red"
-        }
-        return $false
-    }
-    
-    Write-LogMessage "✓ System compatibility check passed" "SUCCESS" "Green"
-    return $true
-}
+Write-Host "Downloading Windows 11 Installation Assistant..." -ForegroundColor Yellow
 
-# Set registry bypass entries
-function Set-BypassRegistryEntries {
-    Write-LogMessage "Setting hardware bypass registry entries..." "INFO" "Cyan"
+try {
+    $assistantPath = "$env:TEMP\Windows11InstallationAssistant.exe"
+    $downloadUrl = "https://go.microsoft.com/fwlink/?linkid=2171764"
     
-    try {
-        # Create registry paths
-        $setupKeyPath = "HKLM:\System\Setup"
-        $labConfigPath = "$setupKeyPath\LabConfig"
-        $moSetupPath = "$setupKeyPath\MoSetup"
-        
-        $paths = @($setupKeyPath, $labConfigPath, $moSetupPath)
-        foreach ($path in $paths) {
-            if (!(Test-Path $path)) { 
-                New-Item -Path $path -Force | Out-Null
-                Write-LogMessage "Created: $path" "SUCCESS" "Gray"
-            }
-        }
-        
-        # Set bypass values
-        $bypassValues = @{
-            "BypassRAMCheck" = 1
-            "BypassTPMCheck" = 1
-            "BypassCPUCheck" = 1
-            "BypassSecureBootCheck" = 1
-            "BypassStorageCheck" = 1
-        }
-        
-        foreach ($value in $bypassValues.GetEnumerator()) {
-            Set-ItemProperty -Path $labConfigPath -Name $value.Key -Value $value.Value -Type DWord -Force
-            Write-LogMessage "Set $($value.Key) = $($value.Value)" "SUCCESS" "Gray"
-        }
-        
-        # Additional bypass for Windows Update
-        Set-ItemProperty -Path $moSetupPath -Name "AllowUpgradesWithUnsupportedTPMOrCPU" -Value 1 -Type DWord -Force
-        Write-LogMessage "Set AllowUpgradesWithUnsupportedTPMOrCPU = 1" "SUCCESS" "Gray"
-        
-        Write-LogMessage "✓ Hardware bypass registry entries set successfully!" "SUCCESS" "Green"
-        
-    } catch {
-        Write-LogMessage "Registry modification failed: $($_.Exception.Message)" "ERROR" "Red"
-        throw "Critical registry modifications failed"
+    # Remove existing file
+    if (Test-Path $assistantPath) {
+        Remove-Item $assistantPath -Force
     }
-}
-
-# Download function with progress
-function Download-FileWithProgress {
-    param(
-        [string]$Url,
-        [string]$OutFile,
-        [int]$TimeoutSeconds = 300
-    )
     
-    try {
-        Write-LogMessage "Downloading from: $Url" "INFO" "Yellow"
-        
-        $webClient = New-Object System.Net.WebClient
-        $webClient.DownloadFile($Url, $OutFile)
-        $webClient.Dispose()
-        
-        if (Test-Path $OutFile) {
-            $fileSize = (Get-Item $OutFile).Length
-            Write-LogMessage "Download completed. Size: $([math]::Round($fileSize/1MB, 2)) MB" "SUCCESS" "Green"
-            return $true
-        }
-        
-        return $false
-    } catch {
-        Write-LogMessage "Download failed: $($_.Exception.Message)" "ERROR" "Red"
-        return $false
-    }
-}
-
-# Main upgrade function
-function Start-Windows11Upgrade {
-    Write-LogMessage "Starting Windows 11 upgrade process..." "INFO" "Magenta"
+    # Download
+    $webClient = New-Object System.Net.WebClient
+    $webClient.DownloadFile($downloadUrl, $assistantPath)
+    $webClient.Dispose()
     
-    try {
-        # Download Windows 11 Installation Assistant
-        $updateAssistantPath = "$env:TEMP\Windows11InstallationAssistant.exe"
-        $downloadUrl = "https://go.microsoft.com/fwlink/?linkid=2171764"
-        
-        # Remove existing file if present
-        if (Test-Path $updateAssistantPath) {
-            Remove-Item $updateAssistantPath -Force
-        }
-        
-        Write-LogMessage "Downloading Windows 11 Installation Assistant..." "INFO" "Yellow"
-        
-        if (Download-FileWithProgress -Url $downloadUrl -OutFile $updateAssistantPath) {
-            $fileSize = (Get-Item $updateAssistantPath).Length
-            
-            if ($fileSize -gt 1MB) {
-                Write-LogMessage "Launching Windows 11 Installation Assistant..." "INFO" "Green"
-                
-                # Launch with bypass parameters
-                $processArgs = @(
-                    '/skipeula'
-                    '/auto'
-                    '/norestart'
-                    '/skipcpu'
-                    '/skiptpm'
-                    '/skipram'
-                    '/skipsecureboot'
-                    '/skipstorage'
-                    '/skipcompat'
-                )
-                
-                $process = Start-Process -FilePath $updateAssistantPath -ArgumentList $processArgs -PassThru -WindowStyle Normal
-                Write-LogMessage "✓ Installation Assistant started (Process ID: $($process.Id))" "SUCCESS" "Green"
-                
-                # Monitor for a short time
-                Start-Sleep -Seconds 10
-                
-                if (!$process.HasExited) {
-                    Write-LogMessage "✓ Installation Assistant is running - upgrade in progress" "SUCCESS" "Green"
-                } else {
-                    Write-LogMessage "Installation Assistant completed with exit code: $($process.ExitCode)" "INFO" "Yellow"
-                }
-                
-            } else {
-                Write-LogMessage "Downloaded file appears to be incomplete" "ERROR" "Red"
-            }
+    if (Test-Path $assistantPath) {
+        $fileSize = (Get-Item $assistantPath).Length
+        if ($fileSize -gt 1MB) {
+            Write-Host "SUCCESS: Downloaded Installation Assistant ($([math]::Round($fileSize/1MB, 2)) MB)" -ForegroundColor Green
         } else {
-            Write-LogMessage "Installation Assistant download failed" "ERROR" "Red"
+            throw "Downloaded file is too small"
         }
-        
-        # Trigger Windows Update
-        Write-LogMessage "Triggering Windows Update scan..." "INFO" "Cyan"
-        
-        try {
-            Start-Process -FilePath "usoclient.exe" -ArgumentList "ScanInstallWait" -NoNewWindow
-            Write-LogMessage "✓ Windows Update scan initiated" "SUCCESS" "Green"
-        } catch {
-            Write-LogMessage "Windows Update trigger failed: $($_.Exception.Message)" "WARNING" "Yellow"
-        }
-        
+    } else {
+        throw "Download file not found"
+    }
+    
+} catch {
+    Write-Host "WARNING: Failed to download Installation Assistant - $($_.Exception.Message)" -ForegroundColor Yellow
+    Write-Host "Continuing with Windows Update method..." -ForegroundColor Cyan
+}
+
+Write-Host "Launching Windows 11 upgrade process..." -ForegroundColor Green
+
+# Method 1: Launch Installation Assistant if downloaded
+if (Test-Path $assistantPath) {
+    try {
+        Write-Host "Starting Installation Assistant with bypass parameters..." -ForegroundColor Yellow
+        $process = Start-Process -FilePath $assistantPath -ArgumentList @('/skipeula', '/auto', '/skipcpu', '/skiptpm', '/skipram', '/skipsecureboot', '/skipstorage') -PassThru
+        Write-Host "Installation Assistant started (Process ID: $($process.Id))" -ForegroundColor Green
+        Start-Sleep -Seconds 5
     } catch {
-        Write-LogMessage "Upgrade process failed: $($_.Exception.Message)" "ERROR" "Red"
-        throw "Upgrade initiation failed"
+        Write-Host "WARNING: Failed to start Installation Assistant - $($_.Exception.Message)" -ForegroundColor Yellow
     }
 }
 
-# Main execution
-function Start-Main {
-    Write-LogMessage "Windows 11 Hardware Bypass & Auto-Upgrade v3.5" "INFO" "Green"
-    Write-LogMessage "Starting upgrade process..." "INFO" "Yellow"
-    
-    # Initialize log file
-    try {
-        "=== Windows 11 Auto-Upgrade Log Started at $(Get-Date) ===" | Out-File -FilePath $global:LogFile -Force
-    } catch {
-        Write-Host "Warning: Could not initialize log file" -ForegroundColor Yellow
-    }
-    
-    try {
-        # Check system compatibility
-        if (-not (Test-SystemCompatibility)) {
-            if (-not $Force) {
-                throw "System compatibility check failed. Use -Force to override."
-            }
-            Write-LogMessage "Forcing upgrade despite compatibility issues..." "WARNING" "Yellow"
-        }
-        
-        # Set registry bypass entries
-        Set-BypassRegistryEntries
-        
-        # Start upgrade process
-        Start-Windows11Upgrade
-        
-        Write-LogMessage "`n=== WINDOWS 11 UPGRADE INITIATED ===" "INFO" "Green"
-        Write-LogMessage "✓ Hardware bypass registry entries active" "SUCCESS" "White"
-        Write-LogMessage "✓ Installation Assistant launched with bypass parameters" "SUCCESS" "White"
-        Write-LogMessage "✓ Windows Update scan triggered" "SUCCESS" "White"
-        Write-LogMessage "✓ System prepared for upgrade" "SUCCESS" "White"
-        
-        Write-LogMessage "`nNext steps:" "INFO" "Yellow"
-        Write-LogMessage "• Monitor the Installation Assistant window for progress" "INFO" "Cyan"
-        Write-LogMessage "• Check Windows Update in Settings if needed" "INFO" "Cyan"
-        Write-LogMessage "• System will restart automatically when ready" "INFO" "Cyan"
-        
-        Write-LogMessage "`nLog file: $global:LogFile" "INFO" "Gray"
-        
-    } catch {
-        Write-LogMessage "Script execution failed: $($_.Exception.Message)" "ERROR" "Red"
-        exit 1
-    }
+# Method 2: Trigger Windows Update
+try {
+    Write-Host "Triggering Windows Update scan..." -ForegroundColor Yellow
+    Start-Process -FilePath "usoclient.exe" -ArgumentList "ScanInstallWait" -NoNewWindow
+    Write-Host "Windows Update scan initiated" -ForegroundColor Green
+} catch {
+    Write-Host "WARNING: Failed to trigger Windows Update - $($_.Exception.Message)" -ForegroundColor Yellow
 }
 
-# Execute main function
-Start-Main
+# Method 3: Legacy Windows Update trigger
+try {
+    Start-Process -FilePath "wuauclt.exe" -ArgumentList "/detectnow" -NoNewWindow
+    Write-Host "Legacy update detection triggered" -ForegroundColor Green
+} catch {
+    Write-Host "WARNING: Failed to trigger legacy update - $($_.Exception.Message)" -ForegroundColor Yellow
+}
+
+Write-Host ""
+Write-Host "=== WINDOWS 11 UPGRADE PROCESS INITIATED ===" -ForegroundColor Green
+Write-Host "✓ Hardware compatibility checks bypassed" -ForegroundColor White
+Write-Host "✓ Installation Assistant launched (if available)" -ForegroundColor White  
+Write-Host "✓ Windows Update scan triggered" -ForegroundColor White
+Write-Host ""
+Write-Host "Next steps:" -ForegroundColor Yellow
+Write-Host "• Monitor Installation Assistant window for progress" -ForegroundColor Cyan
+Write-Host "• Check Settings > Windows Update for feature updates" -ForegroundColor Cyan
+Write-Host "• System will restart automatically when upgrade is ready" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "The upgrade process is now running in the background." -ForegroundColor Green
