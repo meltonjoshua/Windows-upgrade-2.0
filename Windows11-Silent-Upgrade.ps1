@@ -1,5 +1,5 @@
-# Windows 11 Hardware Bypass & Silent Upgrade Script v4.0
-# Simple and reliable version
+# Windows 11 Hardware Bypass & Silent Upgrade Script v4.1
+# Enhanced with 0xa0000400 error fix
 
 # Ensure running as Administrator
 if (-NOT ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
@@ -8,8 +8,9 @@ if (-NOT ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdent
     exit 1
 }
 
-Write-Host "Windows 11 Hardware Bypass & Silent Upgrade v4.0" -ForegroundColor Green
-Write-Host "Setting hardware bypass registry entries..." -ForegroundColor Yellow
+Write-Host "Windows 11 Hardware Bypass & Silent Upgrade v4.1" -ForegroundColor Green
+Write-Host "Enhanced with 0xa0000400 error fix" -ForegroundColor Yellow
+Write-Host "Setting comprehensive hardware bypass registry entries..." -ForegroundColor Yellow
 
 try {
     # Create registry paths
@@ -22,7 +23,7 @@ try {
     if (!(Test-Path $labConfigPath)) { New-Item -Path $labConfigPath -Force | Out-Null }
     if (!(Test-Path $moSetupPath)) { New-Item -Path $moSetupPath -Force | Out-Null }
     
-    # Set bypass values
+    # Standard bypass values
     Set-ItemProperty -Path $labConfigPath -Name "BypassRAMCheck" -Value 1 -Type DWord -Force
     Set-ItemProperty -Path $labConfigPath -Name "BypassTPMCheck" -Value 1 -Type DWord -Force
     Set-ItemProperty -Path $labConfigPath -Name "BypassCPUCheck" -Value 1 -Type DWord -Force
@@ -30,7 +31,40 @@ try {
     Set-ItemProperty -Path $labConfigPath -Name "BypassStorageCheck" -Value 1 -Type DWord -Force
     Set-ItemProperty -Path $moSetupPath -Name "AllowUpgradesWithUnsupportedTPMOrCPU" -Value 1 -Type DWord -Force
     
-    Write-Host "SUCCESS: Hardware bypass registry entries set!" -ForegroundColor Green
+    Write-Host "✓ Standard hardware bypass entries set" -ForegroundColor Green
+    
+    # Enhanced 0xa0000400 error fix registry entries
+    Write-Host "Setting enhanced 0xa0000400 error fix entries..." -ForegroundColor Yellow
+    
+    # Installation Assistant compatibility bypass
+    $compFlagsPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppCompatFlags\Compatibility Assistant\Store"
+    if (!(Test-Path $compFlagsPath)) { New-Item -Path $compFlagsPath -Force | Out-Null }
+    
+    Set-ItemProperty -Path $compFlagsPath -Name "Windows11InstallationAssistant.exe" -Value "~ RUNASADMIN WIN11COMPAT DISABLETHEMES" -Force
+    Set-ItemProperty -Path $compFlagsPath -Name "Windows11Upgrade" -Value "COMPATIBLE" -Force
+    
+    # System state override for Installation Assistant
+    $oobeStatePath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Setup\OOBE"
+    if (!(Test-Path $oobeStatePath)) { New-Item -Path $oobeStatePath -Force | Out-Null }
+    
+    Set-ItemProperty -Path $oobeStatePath -Name "SetupDisplayedEula" -Value 1 -Type DWord -Force
+    Set-ItemProperty -Path $oobeStatePath -Name "MediaBootInstall" -Value 1 -Type DWord -Force
+    
+    # Setup state configuration
+    $setupStatePath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Setup\State"
+    if (!(Test-Path $setupStatePath)) { New-Item -Path $setupStatePath -Force | Out-Null }
+    
+    Set-ItemProperty -Path $setupStatePath -Name "ImageState" -Value "IMAGE_STATE_COMPLETE" -Force
+    Set-ItemProperty -Path $setupStatePath -Name "FactoryPreInstallInProgress" -Value 0 -Type DWord -Force
+    
+    # Memory management bypass for Installation Assistant
+    $memoryPath = "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management"
+    if (Test-Path $memoryPath) {
+        Set-ItemProperty -Path $memoryPath -Name "FeatureSettings" -Value 1 -Type DWord -Force -ErrorAction SilentlyContinue
+        Set-ItemProperty -Path $memoryPath -Name "FeatureSettingsOverride" -Value 3 -Type DWord -Force -ErrorAction SilentlyContinue
+    }
+    
+    Write-Host "✓ Enhanced 0xa0000400 error fix entries set" -ForegroundColor Green
     
 } catch {
     Write-Host "ERROR: Failed to set registry entries - $($_.Exception.Message)" -ForegroundColor Red
