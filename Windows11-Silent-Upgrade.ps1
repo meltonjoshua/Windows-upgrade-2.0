@@ -1,4 +1,4 @@
-﻿# Windows 11 Hardware Bypass & Auto-Upgrade Script v3.4
+# Windows 11 Hardware Bypass and Auto-Upgrade Script v3.4
 # Automated Windows 10 to 11 upgrade with Installation Assistant bypass + PC Health Check automation
 # Automatically handles PC Health Check app requirement + bypasses Installation Assistant hardware checks
 # Enhanced executable location detection with comprehensive search methods
@@ -38,7 +38,7 @@ function Write-LogMessage {
 
 # System validation function
 function Test-SystemCompatibility {
-    Write-LogMessage "Performing system compatibility check..." " " "INFO" "Cyan"
+    Write-LogMessage "Performing system compatibility check..." "INFO" "Cyan"
     
     $issues = @()
     
@@ -58,7 +58,7 @@ function Test-SystemCompatibility {
     
     # Check if already Windows 11
     if ($buildNumber -ge 22000) {
-        Write-LogMessage "System is already running Windows 11 (Build: $buildNumber)" " " "WARNING" "Yellow"
+        Write-LogMessage "System is already running Windows 11 (Build: $buildNumber)" "WARNING" "Yellow"
         return $true
     }
     
@@ -79,16 +79,16 @@ function Test-SystemCompatibility {
     }
     
     if ($issues.Count -gt 0) {
-        Write-LogMessage "System compatibility issues found:" " " "ERROR" "Red"
+        Write-LogMessage "System compatibility issues found:" "ERROR" "Red"
         foreach ($issue in $issues) {
-            Write-LogMessage "  ¢ $issue" " " "ERROR" "Red"
+            Write-LogMessage "  • $issue" "ERROR" "Red"
         }
         return $false
     }
     
-    Write-LogMessage "âœ“ System compatibility check passed" " " "SUCCESS" "Green"
-    Write-LogMessage "Current Windows version: $($osVersion.Major).$($osVersion.Minor) Build $buildNumber" " " "INFO" "Gray"
-    Write-LogMessage "Available disk space: $freeSpaceGB GB" " " "INFO" "Gray"
+    Write-LogMessage "✓ System compatibility check passed" "SUCCESS" "Green"
+    Write-LogMessage "Current Windows version: $($osVersion.Major).$($osVersion.Minor) Build $buildNumber" "INFO" "Gray"
+    Write-LogMessage "Available disk space: $freeSpaceGB GB" "INFO" "Gray"
     return $true
 }
 
@@ -103,14 +103,14 @@ function Download-FileWithProgress {
     
     for ($attempt = 1; $attempt -le $MaxRetries; $attempt++) {
         try {
-            Write-LogMessage "Download attempt $attempt of $MaxRetries..." " " "INFO" "Yellow"
-            Write-LogMessage "URL: $Url" " " "INFO" "Gray"
-            Write-LogMessage "Destination: $OutFile" " " "INFO" "Gray"
+            Write-LogMessage "Download attempt $attempt of $MaxRetries..." "INFO" "Yellow"
+            Write-LogMessage "URL: $Url" "INFO" "Gray"
+            Write-LogMessage "Destination: $OutFile" "INFO" "Gray"
             
             # Use BITS transfer for better reliability with visible progress
             try {
                 Import-Module BitsTransfer -ErrorAction Stop
-                Write-LogMessage "Starting Windows 11 Installation Assistant download with progress..." " " "INFO" "Yellow"
+                Write-LogMessage "Starting Windows 11 Installation Assistant download with progress..." "INFO" "Yellow"
                 
                 # Start BITS transfer with visible progress monitoring
                 $job = Start-BitsTransfer -Source $Url -Destination $OutFile -Description "Windows 11 Installation Assistant" -DisplayName "Windows 11 Download" -Asynchronous
@@ -121,30 +121,30 @@ function Download-FileWithProgress {
                     $job = Get-BitsTransfer -JobId $job.JobId
                     if ($job.BytesTotal -gt 0) {
                         $percentComplete = [math]::Round(($job.BytesTransferred / $job.BytesTotal) * 100, 1)
-                        Write-LogMessage "Download progress: $percentComplete% ($([math]::Round($job.BytesTransferred / 1MB, 1)) MB / $([math]::Round($job.BytesTotal / 1MB, 1)) MB)" " " "INFO" "Cyan"
+                        Write-LogMessage "Download progress: $percentComplete% ($([math]::Round($job.BytesTransferred / 1MB, 1)) MB / $([math]::Round($job.BytesTotal / 1MB, 1)) MB)" "INFO" "Cyan"
                     }
                 } while ($job.JobState -eq "Transferring")
                 
                 if ($job.JobState -eq "Transferred") {
                     Complete-BitsTransfer -BitsJob $job
-                    Write-LogMessage "âœ“ Download completed using BITS transfer" " " "SUCCESS" "Green"
+                    Write-LogMessage "✓ Download completed using BITS transfer" "SUCCESS" "Green"
                     return $true
                 } else {
                     Remove-BitsTransfer -BitsJob $job
                     throw "BITS transfer failed with state: $($job.JobState)"
                 }
             } catch {
-                Write-LogMessage "BITS transfer failed, falling back to WebRequest with progress..." " " "WARNING" "Yellow"
+                Write-LogMessage "BITS transfer failed, falling back to WebRequest with progress..." "WARNING" "Yellow"
                 
                 # Fallback to WebRequest with visible progress
                 try {
                     $webClient = New-Object System.Net.WebClient
                     $webClient.add_DownloadProgressChanged({
                         param($sender, $e)
-                        Write-LogMessage "Download progress: $($e.ProgressPercentage)% ($([math]::Round($e.BytesReceived / 1MB, 1)) MB / $([math]::Round($e.TotalBytesToReceive / 1MB, 1)) MB)" " " "INFO" "Cyan"
+                        Write-LogMessage "Download progress: $($e.ProgressPercentage)% ($([math]::Round($e.BytesReceived / 1MB, 1)) MB / $([math]::Round($e.TotalBytesToReceive / 1MB, 1)) MB)" "INFO" "Cyan"
                     })
                     
-                    Write-LogMessage "Starting download with progress monitoring..." " " "INFO" "Yellow"
+                    Write-LogMessage "Starting download with progress monitoring..." "INFO" "Yellow"
                     $webClient.DownloadFileAsync($Url, $OutFile)
                     
                     # Wait for download to complete
@@ -153,31 +153,31 @@ function Download-FileWithProgress {
                     } while ($webClient.IsBusy)
                     
                     $webClient.Dispose()
-                    Write-LogMessage "âœ“ Download completed using WebRequest" " " "SUCCESS" "Green"
+                    Write-LogMessage "✓ Download completed using WebRequest" "SUCCESS" "Green"
                     return $true
                 } catch {
-                    Write-LogMessage "WebRequest download also failed: $($_.Exception.Message)" " " "ERROR" "Red"
+                    Write-LogMessage "WebRequest download also failed: $($_.Exception.Message)" "ERROR" "Red"
                     throw "All download methods failed"
                 }
             }
         } catch {
-            Write-LogMessage "Download attempt $attempt failed: $($_.Exception.Message)" " " "ERROR" "Red"
+            Write-LogMessage "Download attempt $attempt failed: $($_.Exception.Message)" "ERROR" "Red"
             
             if ($attempt -lt $MaxRetries) {
                 $waitTime = $attempt * 30
-                Write-LogMessage "Waiting $waitTime seconds before retry..." " " "INFO" "Yellow"
+                Write-LogMessage "Waiting $waitTime seconds before retry..." "INFO" "Yellow"
                 Start-Sleep -Seconds $waitTime
             }
         }
     }
     
-    Write-LogMessage "All download attempts failed" " " "ERROR" "Red"
+    Write-LogMessage "All download attempts failed" "ERROR" "Red"
     return $false
 }
 
 # Installation Assistant specific bypass function
 function Set-InstallationAssistantBypass {
-    Write-LogMessage "Setting enhanced Installation Assistant bypass entries for error 0xa0000400..." " " "INFO" "Cyan"
+    Write-LogMessage "Setting enhanced Installation Assistant bypass entries for error 0xa0000400..." "INFO" "Cyan"
     
     try {
         # Comprehensive bypass for Installation Assistant error 0xa0000400
@@ -242,7 +242,7 @@ function Set-InstallationAssistantBypass {
                 # Ensure the registry path exists
                 if (!(Test-Path $regPath)) {
                     New-Item -Path $regPath -Force -ErrorAction Stop | Out-Null
-                    Write-LogMessage "Created registry path: $regPath" " " "SUCCESS" "Gray"
+                    Write-LogMessage "Created registry path: $regPath" "SUCCESS" "Gray"
                 }
                 
                 # Set all values for this path
@@ -255,13 +255,13 @@ function Set-InstallationAssistantBypass {
                         } else {
                             Set-ItemProperty -Path $regPath -Name $valueName -Value $value -Type DWord -Force -ErrorAction Stop
                         }
-                        Write-LogMessage "Set $regPath\$valueName = $value" " " "SUCCESS" "Gray"
+                        Write-LogMessage "Set $regPath\$valueName = $value" "SUCCESS" "Gray"
                     } catch {
-                        Write-LogMessage "Could not set $regPath\$valueName : $($_.Exception.Message)" " " "WARNING" "Yellow"
+                        Write-LogMessage "Could not set $regPath\$valueName : $($_.Exception.Message)" "WARNING" "Yellow"
                     }
                 }
             } catch {
-                Write-LogMessage "Could not access registry path $regPath : $($_.Exception.Message)" " " "WARNING" "Yellow"
+                Write-LogMessage "Could not access registry path $regPath : $($_.Exception.Message)" "WARNING" "Yellow"
             }
         }
         
@@ -284,13 +284,13 @@ function Set-InstallationAssistantBypass {
             foreach ($flag in $iaCompatValues.GetEnumerator()) {
                 try {
                     Set-ItemProperty -Path $compFlags -Name $flag.Key -Value $flag.Value -Force -ErrorAction Stop
-                    Write-LogMessage "Set compatibility flag: $($flag.Key)" " " "SUCCESS" "Gray"
+                    Write-LogMessage "Set compatibility flag: $($flag.Key)" "SUCCESS" "Gray"
                 } catch {
-                    Write-LogMessage "Could not set compatibility flag $($flag.Key): $($_.Exception.Message)" " " "WARNING" "Yellow"
+                    Write-LogMessage "Could not set compatibility flag $($flag.Key): $($_.Exception.Message)" "WARNING" "Yellow"
                 }
             }
         } catch {
-            Write-LogMessage "Could not set Installation Assistant compatibility flags: $($_.Exception.Message)" " " "WARNING" "Yellow"
+            Write-LogMessage "Could not set Installation Assistant compatibility flags: $($_.Exception.Message)" "WARNING" "Yellow"
         }
         
         # Step 4: Force clear all compatibility caches that might trigger error 0xa0000400
@@ -307,14 +307,14 @@ function Set-InstallationAssistantBypass {
                 try {
                     if (Test-Path $cacheKey) {
                         Remove-Item -Path $cacheKey -Recurse -Force -ErrorAction Stop
-                        Write-LogMessage "Cleared compatibility cache: $cacheKey" " " "SUCCESS" "Gray"
+                        Write-LogMessage "Cleared compatibility cache: $cacheKey" "SUCCESS" "Gray"
                     }
                 } catch {
-                    Write-LogMessage "Could not clear cache $cacheKey : $($_.Exception.Message)" " " "WARNING" "Yellow"
+                    Write-LogMessage "Could not clear cache $cacheKey : $($_.Exception.Message)" "WARNING" "Yellow"
                 }
             }
         } catch {
-            Write-LogMessage "Could not clear compatibility caches: $($_.Exception.Message)" " " "WARNING" "Yellow"
+            Write-LogMessage "Could not clear compatibility caches: $($_.Exception.Message)" "WARNING" "Yellow"
         }
         
         # Step 5: Additional CPU and platform compatibility overrides for 0xa0000400
@@ -322,25 +322,25 @@ function Set-InstallationAssistantBypass {
             $cpuCompatPath = "HKLM:\HARDWARE\DESCRIPTION\System\CentralProcessor\0"
             if (Test-Path $cpuCompatPath) {
                 # Override CPU identification to supported model
-                Set-ItemProperty -Path $cpuCompatPath -Name "ProcessorNameString" -Value "Intel(R) Core(TM) i7-8700K CPU at 3.70GHz" -Type String -Force -ErrorAction SilentlyContinue
+                Set-ItemProperty -Path $cpuCompatPath -Name "ProcessorNameString" -Value "Intel(R) Core(TM) i7-8700K CPU @ 3.70GHz" -Type String -Force -ErrorAction SilentlyContinue
                 Set-ItemProperty -Path $cpuCompatPath -Name "Identifier" -Value "Intel64 Family 6 Model 158 Stepping 10" -Type String -Force -ErrorAction SilentlyContinue
-                Write-LogMessage "Set CPU compatibility override for 0xa0000400" " " "SUCCESS" "Gray"
+                Write-LogMessage "Set CPU compatibility override for 0xa0000400" "SUCCESS" "Gray"
             }
         } catch {
-            Write-LogMessage "Could not set CPU compatibility override: $($_.Exception.Message)" " " "WARNING" "Yellow"
+            Write-LogMessage "Could not set CPU compatibility override: $($_.Exception.Message)" "WARNING" "Yellow"
         
-        Write-LogMessage "âœ“ Enhanced Installation Assistant bypass for error 0xa0000400 completed" " " "SUCCESS" "Green"
+        Write-LogMessage "✓ Enhanced Installation Assistant bypass for error 0xa0000400 completed" "SUCCESS" "Green"
         return $true
         
     } catch {
-        Write-LogMessage "Enhanced Installation Assistant bypass failed: $($_.Exception.Message)" " " "ERROR" "Red"
+        Write-LogMessage "Enhanced Installation Assistant bypass failed: $($_.Exception.Message)" "ERROR" "Red"
         return $false
     }
 }
 
 # Function to find PC Health Check executable location
 function Find-PCHealthCheckExecutable {
-    Write-LogMessage "Searching for PC Health Check executable..." " " "INFO" "Yellow"
+    Write-LogMessage "Searching for PC Health Check executable..." "INFO" "Yellow"
     
     # Standard installation paths
     $standardPaths = @(
@@ -356,14 +356,14 @@ function Find-PCHealthCheckExecutable {
     # Check standard paths first
     foreach ($path in $standardPaths) {
         if (Test-Path $path) {
-            Write-LogMessage "Found PC Health Check at standard location: $path" " " "SUCCESS" "Green"
+            Write-LogMessage "Found PC Health Check at standard location: $path" "SUCCESS" "Green"
             return $path
         }
     }
     
     # Search using registry
     try {
-        Write-LogMessage "Searching registry for PC Health Check installation..." " " "INFO" "Gray"
+        Write-LogMessage "Searching registry for PC Health Check installation..." "INFO" "Gray"
         $uninstallKeys = @(
             "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*",
             "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*",
@@ -380,7 +380,7 @@ function Find-PCHealthCheckExecutable {
                     if ($program.InstallLocation) {
                         $regPath = Join-Path $program.InstallLocation "PCHealthCheck.exe"
                         if (Test-Path $regPath) {
-                            Write-LogMessage "Found PC Health Check via registry: $regPath" " " "SUCCESS" "Green"
+                            Write-LogMessage "Found PC Health Check via registry: $regPath" "SUCCESS" "Green"
                             return $regPath
                         }
                     }
@@ -388,7 +388,7 @@ function Find-PCHealthCheckExecutable {
                     # Also check DisplayIcon path
                     if ($program.DisplayIcon -and $program.DisplayIcon.EndsWith("PCHealthCheck.exe")) {
                         if (Test-Path $program.DisplayIcon) {
-                            Write-LogMessage "Found PC Health Check via DisplayIcon: $($program.DisplayIcon)" " " "SUCCESS" "Green"
+                            Write-LogMessage "Found PC Health Check via DisplayIcon: $($program.DisplayIcon)" "SUCCESS" "Green"
                             return $program.DisplayIcon
                         }
                     }
@@ -396,38 +396,38 @@ function Find-PCHealthCheckExecutable {
             }
         }
     } catch {
-        Write-LogMessage "Registry search failed: $($_.Exception.Message)" " " "WARNING" "Yellow"
+        Write-LogMessage "Registry search failed: $($_.Exception.Message)" "WARNING" "Yellow"
     }
     
     # Search Windows Apps directory
     try {
-        Write-LogMessage "Searching Windows Apps directory..." " " "INFO" "Gray"
+        Write-LogMessage "Searching Windows Apps directory..." "INFO" "Gray"
         $windowsAppsPath = "${env:ProgramFiles}\WindowsApps"
         if (Test-Path $windowsAppsPath) {
             $pcHealthDirs = Get-ChildItem $windowsAppsPath -Directory -Filter "*PCHealth*" -ErrorAction SilentlyContinue
             foreach ($dir in $pcHealthDirs) {
                 $appPath = Join-Path $dir.FullName "PCHealthCheck.exe"
                 if (Test-Path $appPath) {
-                    Write-LogMessage "Found PC Health Check in WindowsApps: $appPath" " " "SUCCESS" "Green"
+                    Write-LogMessage "Found PC Health Check in WindowsApps: $appPath" "SUCCESS" "Green"
                     return $appPath
                 }
             }
         }
     } catch {
-        Write-LogMessage "WindowsApps search failed: $($_.Exception.Message)" " " "WARNING" "Yellow"
+        Write-LogMessage "WindowsApps search failed: $($_.Exception.Message)" "WARNING" "Yellow"
     }
     
-    Write-LogMessage "PC Health Check executable not found in any known location" " " "WARNING" "Yellow"
+    Write-LogMessage "PC Health Check executable not found in any known location" "WARNING" "Yellow"
     return $null
 }
 
 # PC Health Check Registry Bypass function
 function Set-PCHealthCheckBypass {
-    Write-LogMessage "Setting enhanced PC Health Check registry bypass entries..." " " "INFO" "Cyan"
+    Write-LogMessage "Setting enhanced PC Health Check registry bypass entries..." "INFO" "Cyan"
     
     try {
         # Step 1: Clear old upgrade failure records (from gist technique)
-        Write-LogMessage "Step 1: Clearing old upgrade failure records..." " " "INFO" "Yellow"
+        Write-LogMessage "Step 1: Clearing old upgrade failure records..." "INFO" "Yellow"
         
         $failureRecordPaths = @(
             "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\CompatMarkers",
@@ -439,17 +439,17 @@ function Set-PCHealthCheckBypass {
             try {
                 if (Test-Path $path) {
                     Remove-Item -Path $path -Recurse -Force -ErrorAction Stop
-                    Write-LogMessage "Removed upgrade failure record: $path" " " "SUCCESS" "Gray"
+                    Write-LogMessage "Removed upgrade failure record: $path" "SUCCESS" "Gray"
                 } else {
-                    Write-LogMessage "Path not found (OK): $path" " " "SUCCESS" "Gray"
+                    Write-LogMessage "Path not found (OK): $path" "SUCCESS" "Gray"
                 }
             } catch {
-                Write-LogMessage "Could not remove $path - $($_.Exception.Message)" " " "WARNING" "Yellow"
+                Write-LogMessage "Could not remove $path - $($_.Exception.Message)" "WARNING" "Yellow"
             }
         }
         
         # Step 2: Hardware compatibility simulation using HwReqChk (from gist technique)
-        Write-LogMessage "Step 2: Simulating hardware compatibility..." " " "INFO" "Yellow"
+        Write-LogMessage "Step 2: Simulating hardware compatibility..." "INFO" "Yellow"
         
         try {
             $hwReqChkPath = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\HwReqChk"
@@ -466,14 +466,14 @@ function Set-PCHealthCheckBypass {
             )
             
             Set-ItemProperty -Path $hwReqChkPath -Name "HwReqChkVars" -Value $hwReqChkValues -Type MultiString -Force
-            Write-LogMessage "Set hardware compatibility simulation values" " " "SUCCESS" "Gray"
+            Write-LogMessage "Set hardware compatibility simulation values" "SUCCESS" "Gray"
             
         } catch {
-            Write-LogMessage "Could not set hardware compatibility simulation: $($_.Exception.Message)" " " "WARNING" "Yellow"
+            Write-LogMessage "Could not set hardware compatibility simulation: $($_.Exception.Message)" "WARNING" "Yellow"
         }
         
         # Step 3: Allow upgrades on unsupported TPM or CPU (official Microsoft bypass)
-        Write-LogMessage "Step 3: Enabling official Microsoft bypass..." " " "INFO" "Yellow"
+        Write-LogMessage "Step 3: Enabling official Microsoft bypass..." "INFO" "Yellow"
         
         try {
             $moSetupPath = "HKLM:\SYSTEM\Setup\MoSetup"
@@ -482,14 +482,14 @@ function Set-PCHealthCheckBypass {
             }
             
             Set-ItemProperty -Path $moSetupPath -Name "AllowUpgradesWithUnsupportedTPMOrCPU" -Value 1 -Type DWord -Force
-            Write-LogMessage "Set AllowUpgradesWithUnsupportedTPMOrCPU = 1" " " "SUCCESS" "Gray"
+            Write-LogMessage "Set AllowUpgradesWithUnsupportedTPMOrCPU = 1" "SUCCESS" "Gray"
             
         } catch {
-            Write-LogMessage "Could not set Microsoft bypass flag: $($_.Exception.Message)" " " "WARNING" "Yellow"
+            Write-LogMessage "Could not set Microsoft bypass flag: $($_.Exception.Message)" "WARNING" "Yellow"
         }
         
         # Step 4: Set PC Health Check eligibility flag (from gist technique)
-        Write-LogMessage "Step 4: Setting PC Health Check eligibility flag..." " " "INFO" "Yellow"
+        Write-LogMessage "Step 4: Setting PC Health Check eligibility flag..." "INFO" "Yellow"
         
         try {
             $pchcPath = "HKCU:\Software\Microsoft\PCHC"
@@ -498,14 +498,14 @@ function Set-PCHealthCheckBypass {
             }
             
             Set-ItemProperty -Path $pchcPath -Name "UpgradeEligibility" -Value 1 -Type DWord -Force
-            Write-LogMessage "Set PCHC UpgradeEligibility = 1" " " "SUCCESS" "Gray"
+            Write-LogMessage "Set PCHC UpgradeEligibility = 1" "SUCCESS" "Gray"
             
         } catch {
-            Write-LogMessage "Could not set PC Health Check eligibility: $($_.Exception.Message)" " " "WARNING" "Yellow"
+            Write-LogMessage "Could not set PC Health Check eligibility: $($_.Exception.Message)" "WARNING" "Yellow"
         }
         
         # Step 5: Legacy PC Health Check compatibility values (enhanced)
-        Write-LogMessage "Step 5: Setting legacy PC Health Check values..." " " "INFO" "Yellow"
+        Write-LogMessage "Step 5: Setting legacy PC Health Check values..." "INFO" "Yellow"
         
         # PC Health Check stores its findings in various registry locations
         $pcHealthPath = "HKLM:\SOFTWARE\Microsoft\PCHealthCheck"
@@ -517,9 +517,9 @@ function Set-PCHealthCheckBypass {
             if (!(Test-Path $path)) {
                 try {
                     New-Item -Path $path -Force -ErrorAction Stop | Out-Null
-                    Write-LogMessage "Created registry path: $path" " " "SUCCESS" "Gray"
+                    Write-LogMessage "Created registry path: $path" "SUCCESS" "Gray"
                 } catch {
-                    Write-LogMessage "Could not create path: $path - $($_.Exception.Message)" " " "WARNING" "Yellow"
+                    Write-LogMessage "Could not create path: $path - $($_.Exception.Message)" "WARNING" "Yellow"
                 }
             }
         }
@@ -546,14 +546,14 @@ function Set-PCHealthCheckBypass {
                 # Set in both HKLM and HKCU for comprehensive coverage
                 Set-ItemProperty -Path $pcHealthPath -Name $value.Key -Value $value.Value -Force -ErrorAction SilentlyContinue
                 Set-ItemProperty -Path $pcHealthUserPath -Name $value.Key -Value $value.Value -Force -ErrorAction SilentlyContinue
-                Write-LogMessage "Set legacy PC Health Check: $($value.Key) = $($value.Value)" " " "SUCCESS" "Gray"
+                Write-LogMessage "Set legacy PC Health Check: $($value.Key) = $($value.Value)" "SUCCESS" "Gray"
             } catch {
-                Write-LogMessage "Could not set $($value.Key): $($_.Exception.Message)" " " "WARNING" "Yellow"
+                Write-LogMessage "Could not set $($value.Key): $($_.Exception.Message)" "WARNING" "Yellow"
             }
         }
         
         # Step 6: Additional hardware compatibility flags
-        Write-LogMessage "Step 6: Setting additional hardware compatibility flags..." " " "INFO" "Yellow"
+        Write-LogMessage "Step 6: Setting additional hardware compatibility flags..." "INFO" "Yellow"
         
         try {
             $hardwareCompatPath = "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Environment"
@@ -566,13 +566,13 @@ function Set-PCHealthCheckBypass {
             foreach ($flag in $hardwareFlags.GetEnumerator()) {
                 try {
                     Set-ItemProperty -Path $hardwareCompatPath -Name $flag.Key -Value $flag.Value -Force -ErrorAction SilentlyContinue
-                    Write-LogMessage "Set hardware override: $($flag.Key) = $($flag.Value)" " " "SUCCESS" "Gray"
+                    Write-LogMessage "Set hardware override: $($flag.Key) = $($flag.Value)" "SUCCESS" "Gray"
                 } catch {
-                    Write-LogMessage "Could not set hardware override $($flag.Key): $($_.Exception.Message)" " " "WARNING" "Yellow"
+                    Write-LogMessage "Could not set hardware override $($flag.Key): $($_.Exception.Message)" "WARNING" "Yellow"
                 }
             }
         } catch {
-            Write-LogMessage "Could not set hardware compatibility overrides: $($_.Exception.Message)" " " "WARNING" "Yellow"
+            Write-LogMessage "Could not set hardware compatibility overrides: $($_.Exception.Message)" "WARNING" "Yellow"
         }
         
         # Step 7: Create fake TPM and Secure Boot entries for PC Health Check
@@ -589,24 +589,24 @@ function Set-PCHealthCheckBypass {
             }
             Set-ItemProperty -Path $secureBootPath -Name "UEFISecureBootEnabled" -Value 1 -Type DWord -Force -ErrorAction SilentlyContinue
             
-            Write-LogMessage "Set TPM and Secure Boot override flags" " " "SUCCESS" "Gray"
+            Write-LogMessage "Set TPM and Secure Boot override flags" "SUCCESS" "Gray"
         } catch {
-            Write-LogMessage "Could not set TPM/Secure Boot overrides: $($_.Exception.Message)" " " "WARNING" "Yellow"
+            Write-LogMessage "Could not set TPM/Secure Boot overrides: $($_.Exception.Message)" "WARNING" "Yellow"
         }
         
-        Write-LogMessage "âœ“ Enhanced PC Health Check registry bypass configuration completed" " " "SUCCESS" "Green"
-        Write-LogMessage "âœ“ Applied proven bypass techniques from Windows 11 upgrade community" " " "SUCCESS" "Green"
+        Write-LogMessage "✓ Enhanced PC Health Check registry bypass configuration completed" "SUCCESS" "Green"
+        Write-LogMessage "✓ Applied proven bypass techniques from Windows 11 upgrade community" "SUCCESS" "Green"
         return $true
         
     } catch {
-        Write-LogMessage "Enhanced PC Health Check registry bypass failed: $($_.Exception.Message)" " " "ERROR" "Red"
+        Write-LogMessage "Enhanced PC Health Check registry bypass failed: $($_.Exception.Message)" "ERROR" "Red"
         return $false
     }
 }
 
 # PC Health Check App automation function
 function Install-PCHealthCheckApp {
-    Write-LogMessage "Installing PC Health Check app automatically..." " " "INFO" "Cyan"
+    Write-LogMessage "Installing PC Health Check app automatically..." "INFO" "Cyan"
     
     try {
         $pcHealthCheckUrl = "https://aka.ms/GetPCHealthCheckApp"
@@ -624,32 +624,32 @@ function Install-PCHealthCheckApp {
         # Check if already installed
         $existingInstall = Find-PCHealthCheckExecutable
         if ($existingInstall) {
-            Write-LogMessage "PC Health Check app is already installed at: $existingInstall" " " "SUCCESS" "Green"
+            Write-LogMessage "PC Health Check app is already installed at: $existingInstall" "SUCCESS" "Green"
             return $true
         }
         
-        Write-LogMessage "Downloading PC Health Check app..." " " "INFO" "Yellow"
+        Write-LogMessage "Downloading PC Health Check app..." "INFO" "Yellow"
         
         # Remove existing installer if present
         if (Test-Path $pcHealthCheckPath) {
             try {
                 Remove-Item $pcHealthCheckPath -Force -ErrorAction Stop
-                Write-LogMessage "Removed existing PC Health Check installer" " " "INFO" "Gray"
+                Write-LogMessage "Removed existing PC Health Check installer" "INFO" "Gray"
             } catch {
-                Write-LogMessage "Could not remove existing installer: $($_.Exception.Message)" " " "WARNING" "Yellow"
+                Write-LogMessage "Could not remove existing installer: $($_.Exception.Message)" "WARNING" "Yellow"
             }
         }
         
         # Download PC Health Check app
         if (Download-FileWithProgress -Url $pcHealthCheckUrl -OutFile $pcHealthCheckPath -TimeoutSeconds 600 -MaxRetries 3) {
-            Write-LogMessage "PC Health Check download completed" " " "SUCCESS" "Green"
+            Write-LogMessage "PC Health Check download completed" "SUCCESS" "Green"
             
             if (Test-Path $pcHealthCheckPath) {
                 $fileSize = (Get-Item $pcHealthCheckPath).Length
-                Write-LogMessage "Installer file size: $([math]::Round($fileSize/1MB, 2)) MB" " " "INFO" "Gray"
+                Write-LogMessage "Installer file size: $([math]::Round($fileSize/1MB, 2)) MB" "INFO" "Gray"
                 
                 if ($fileSize -gt 1MB) {
-                    Write-LogMessage "Installing PC Health Check app silently..." " " "INFO" "Yellow"
+                    Write-LogMessage "Installing PC Health Check app silently..." "INFO" "Yellow"
                     
                     # Install silently using msiexec
                     $installArgs = @(
@@ -663,100 +663,100 @@ function Install-PCHealthCheckApp {
                         $installProcess = Start-Process -FilePath "msiexec.exe" -ArgumentList $installArgs -Wait -PassThru -NoNewWindow -ErrorAction Stop
                         
                         if ($installProcess.ExitCode -eq 0) {
-                            Write-LogMessage "âœ“ PC Health Check app installed successfully" " " "SUCCESS" "Green"
+                            Write-LogMessage "✓ PC Health Check app installed successfully" "SUCCESS" "Green"
                             
                             # Verify installation by checking all possible locations
                             Start-Sleep -Seconds 5
                             $foundPath = Find-PCHealthCheckExecutable
                             
                             if ($foundPath) {
-                                Write-LogMessage "âœ“ Installation verified - PC Health Check executable found at: $foundPath" " " "SUCCESS" "Green"
+                                Write-LogMessage "✓ Installation verified - PC Health Check executable found at: $foundPath" "SUCCESS" "Green"
                                 
                                 # Configure PC Health Check to report all requirements as met
-                                Write-LogMessage "Configuring PC Health Check to bypass hardware requirements..." " " "INFO" "Yellow"
+                                Write-LogMessage "Configuring PC Health Check to bypass hardware requirements..." "INFO" "Yellow"
                                 if (Set-PCHealthCheckBypass) {
-                                    Write-LogMessage "âœ“ PC Health Check configured to report all requirements as met" " " "SUCCESS" "Green"
+                                    Write-LogMessage "✓ PC Health Check configured to report all requirements as met" "SUCCESS" "Green"
                                 } else {
-                                    Write-LogMessage "Warning: Could not fully configure PC Health Check bypass" " " "WARNING" "Yellow"
+                                    Write-LogMessage "Warning: Could not fully configure PC Health Check bypass" "WARNING" "Yellow"
                                 }
                                 
                                 return $true
                             } else {
-                                Write-LogMessage "Installation completed but executable not found in any expected location" " " "WARNING" "Yellow"
-                                Write-LogMessage "This may be normal - some versions install to non-standard locations" " " "INFO" "Cyan"
+                                Write-LogMessage "Installation completed but executable not found in any expected location" "WARNING" "Yellow"
+                                Write-LogMessage "This may be normal - some versions install to non-standard locations" "INFO" "Cyan"
                                 
                                 # Still configure registry bypass in case the app is installed somewhere
-                                Write-LogMessage "Configuring PC Health Check bypass anyway..." " " "INFO" "Yellow"
+                                Write-LogMessage "Configuring PC Health Check bypass anyway..." "INFO" "Yellow"
                                 if (Set-PCHealthCheckBypass) {
-                                    Write-LogMessage "âœ“ PC Health Check registry bypass configured" " " "SUCCESS" "Green"
-                                    Write-LogMessage "Registry bypass should ensure compatibility is reported correctly" " " "INFO" "Cyan"
+                                    Write-LogMessage "✓ PC Health Check registry bypass configured" "SUCCESS" "Green"
+                                    Write-LogMessage "Registry bypass should ensure compatibility is reported correctly" "INFO" "Cyan"
                                 } else {
-                                    Write-LogMessage "Warning: Could not configure PC Health Check bypass" " " "WARNING" "Yellow"
+                                    Write-LogMessage "Warning: Could not configure PC Health Check bypass" "WARNING" "Yellow"
                                 }
                                 
                                 # Return true since installation succeeded and bypass is configured
                                 return $true
                             }
                         } else {
-                            Write-LogMessage "PC Health Check installation failed with exit code: $($installProcess.ExitCode)" " " "ERROR" "Red"
+                            Write-LogMessage "PC Health Check installation failed with exit code: $($installProcess.ExitCode)" "ERROR" "Red"
                             return $false
                         }
                     } catch {
-                        Write-LogMessage "Failed to install PC Health Check: $($_.Exception.Message)" " " "ERROR" "Red"
+                        Write-LogMessage "Failed to install PC Health Check: $($_.Exception.Message)" "ERROR" "Red"
                         return $false
                     }
                 } else {
-                    Write-LogMessage "Downloaded installer appears to be incomplete (too small)" " " "ERROR" "Red"
+                    Write-LogMessage "Downloaded installer appears to be incomplete (too small)" "ERROR" "Red"
                     return $false
                 }
             } else {
-                Write-LogMessage "PC Health Check download verification failed - file not found" " " "ERROR" "Red"
+                Write-LogMessage "PC Health Check download verification failed - file not found" "ERROR" "Red"
                 return $false
             }
         } else {
-            Write-LogMessage "PC Health Check download failed after all retries" " " "ERROR" "Red"
+            Write-LogMessage "PC Health Check download failed after all retries" "ERROR" "Red"
             return $false
         }
         
     } catch {
-        Write-LogMessage "PC Health Check installation encountered error: $($_.Exception.Message)" " " "ERROR" "Red"
+        Write-LogMessage "PC Health Check installation encountered error: $($_.Exception.Message)" "ERROR" "Red"
         return $false
     }
 }
 
 # Run PC Health Check app automatically
 function Run-PCHealthCheck {
-    Write-LogMessage "Running PC Health Check automatically..." " " "INFO" "Cyan"
+    Write-LogMessage "Running PC Health Check automatically..." "INFO" "Cyan"
     
     try {
         # Find PC Health Check executable using comprehensive search
         $pcHealthCheckExe = Find-PCHealthCheckExecutable
         
         if (-not $pcHealthCheckExe) {
-            Write-LogMessage "PC Health Check executable not found anywhere" " " "WARNING" "Yellow"
-            Write-LogMessage "Registry bypass is configured, so compatibility should still be reported" " " "INFO" "Cyan"
-            Write-LogMessage "This is not necessarily a problem - the registry bypass may be sufficient" " " "INFO" "Cyan"
+            Write-LogMessage "PC Health Check executable not found anywhere" "WARNING" "Yellow"
+            Write-LogMessage "Registry bypass is configured, so compatibility should still be reported" "INFO" "Cyan"
+            Write-LogMessage "This is not necessarily a problem - the registry bypass may be sufficient" "INFO" "Cyan"
             return $false
         }
         
-        Write-LogMessage "Launching PC Health Check app..." " " "INFO" "Yellow"
+        Write-LogMessage "Launching PC Health Check app..." "INFO" "Yellow"
         
         # Ensure bypass settings are active before launching
-        Write-LogMessage "Ensuring PC Health Check bypass settings are active..." " " "INFO" "Yellow"
+        Write-LogMessage "Ensuring PC Health Check bypass settings are active..." "INFO" "Yellow"
         Set-PCHealthCheckBypass | Out-Null
         
         # Launch PC Health Check app
         try {
             $pcHealthProcess = Start-Process -FilePath $pcHealthCheckExe -PassThru -ErrorAction Stop
-            Write-LogMessage "âœ“ PC Health Check launched with Process ID: $($pcHealthProcess.Id)" " " "SUCCESS" "Green"
+            Write-LogMessage "✓ PC Health Check launched with Process ID: $($pcHealthProcess.Id)" "SUCCESS" "Green"
             
             # Wait a few seconds for the app to initialize
             Start-Sleep -Seconds 5
             
             # Check if process is still running
             if (-not $pcHealthProcess.HasExited) {
-                Write-LogMessage "âœ“ PC Health Check is running - compatibility check in progress" " " "SUCCESS" "Green"
-                Write-LogMessage "Waiting for PC Health Check to complete its assessment..." " " "INFO" "Yellow"
+                Write-LogMessage "✓ PC Health Check is running - compatibility check in progress" "SUCCESS" "Green"
+                Write-LogMessage "Waiting for PC Health Check to complete its assessment..." "INFO" "Yellow"
                 
                 # Monitor for a reasonable time (60 seconds max)
                 $timeout = 60
@@ -766,84 +766,84 @@ function Run-PCHealthCheck {
                     Start-Sleep -Seconds 2
                     $elapsed += 2
                     if ($elapsed % 10 -eq 0) {
-                        Write-LogMessage "PC Health Check still running... ($elapsed/$timeout seconds)" " " "INFO" "Gray"
+                        Write-LogMessage "PC Health Check still running... ($elapsed/$timeout seconds)" "INFO" "Gray"
                     }
                 }
                 
                 if ($pcHealthProcess.HasExited) {
-                    Write-LogMessage "âœ“ PC Health Check completed with exit code: $($pcHealthProcess.ExitCode)" " " "SUCCESS" "Green"
+                    Write-LogMessage "✓ PC Health Check completed with exit code: $($pcHealthProcess.ExitCode)" "SUCCESS" "Green"
                     return $true
                 } else {
-                    Write-LogMessage "PC Health Check is taking longer than expected - continuing with upgrade process" " " "INFO" "Yellow"
-                    Write-LogMessage "The PC Health Check window will remain open for user review" " " "INFO" "Cyan"
+                    Write-LogMessage "PC Health Check is taking longer than expected - continuing with upgrade process" "INFO" "Yellow"
+                    Write-LogMessage "The PC Health Check window will remain open for user review" "INFO" "Cyan"
                     return $true
                 }
             } else {
-                Write-LogMessage "PC Health Check completed quickly with exit code: $($pcHealthProcess.ExitCode)" " " "SUCCESS" "Green"
+                Write-LogMessage "PC Health Check completed quickly with exit code: $($pcHealthProcess.ExitCode)" "SUCCESS" "Green"
                 return $true
             }
             
         } catch {
-            Write-LogMessage "Failed to launch PC Health Check: $($_.Exception.Message)" " " "ERROR" "Red"
+            Write-LogMessage "Failed to launch PC Health Check: $($_.Exception.Message)" "ERROR" "Red"
             return $false
         }
         
     } catch {
-        Write-LogMessage "PC Health Check execution encountered error: $($_.Exception.Message)" " " "ERROR" "Red"
+        Write-LogMessage "PC Health Check execution encountered error: $($_.Exception.Message)" "ERROR" "Red"
         return $false
     }
 }
 
 # Enhanced function to handle PC Health Check requirement automatically
 function Handle-PCHealthCheckRequirement {
-    Write-LogMessage "Handling PC Health Check requirement automatically..." " " "INFO" "Magenta"
+    Write-LogMessage "Handling PC Health Check requirement automatically..." "INFO" "Magenta"
     
     try {
         # Step 0: Set registry bypass entries first
-        Write-LogMessage "Step 0: Setting PC Health Check registry bypass entries..." " " "INFO" "Yellow"
+        Write-LogMessage "Step 0: Setting PC Health Check registry bypass entries..." "INFO" "Yellow"
         if (Set-PCHealthCheckBypass) {
-            Write-LogMessage "âœ“ PC Health Check registry bypass configured" " " "SUCCESS" "Green"
+            Write-LogMessage "✓ PC Health Check registry bypass configured" "SUCCESS" "Green"
         } else {
-            Write-LogMessage "Warning: PC Health Check registry bypass had issues" " " "WARNING" "Yellow"
+            Write-LogMessage "Warning: PC Health Check registry bypass had issues" "WARNING" "Yellow"
         }
         
         # Step 1: Install PC Health Check app if needed
-        Write-LogMessage "Step 1: Ensuring PC Health Check app is installed..." " " "INFO" "Yellow"
+        Write-LogMessage "Step 1: Ensuring PC Health Check app is installed..." "INFO" "Yellow"
         $installResult = Install-PCHealthCheckApp
         if (-not $installResult) {
-            Write-LogMessage "PC Health Check installation had issues, but registry bypass is configured" " " "WARNING" "Yellow"
-            Write-LogMessage "Registry bypass should be sufficient for compatibility reporting" " " "INFO" "Cyan"
+            Write-LogMessage "PC Health Check installation had issues, but registry bypass is configured" "WARNING" "Yellow"
+            Write-LogMessage "Registry bypass should be sufficient for compatibility reporting" "INFO" "Cyan"
         } else {
-            Write-LogMessage "âœ“ PC Health Check app installed successfully" " " "SUCCESS" "Green"
+            Write-LogMessage "✓ PC Health Check app installed successfully" "SUCCESS" "Green"
         }
         
         # Step 2: Run PC Health Check automatically (if executable was found)
-        Write-LogMessage "Step 2: Running PC Health Check compatibility assessment..." " " "INFO" "Yellow"
+        Write-LogMessage "Step 2: Running PC Health Check compatibility assessment..." "INFO" "Yellow"
         $runResult = Run-PCHealthCheck
         if (-not $runResult) {
-            Write-LogMessage "PC Health Check execution had issues, but registry bypass is active" " " "WARNING" "Yellow"
-            Write-LogMessage "The registry bypass configuration should ensure compatibility is reported" " " "INFO" "Cyan"
+            Write-LogMessage "PC Health Check execution had issues, but registry bypass is active" "WARNING" "Yellow"
+            Write-LogMessage "The registry bypass configuration should ensure compatibility is reported" "INFO" "Cyan"
         } else {
-            Write-LogMessage "âœ“ PC Health Check executed successfully" " " "SUCCESS" "Green"
+            Write-LogMessage "✓ PC Health Check executed successfully" "SUCCESS" "Green"
         }
         
         # Step 3: Give time for results to be processed
-        Write-LogMessage "Step 3: Allowing time for compatibility results to be processed..." " " "INFO" "Yellow"
+        Write-LogMessage "Step 3: Allowing time for compatibility results to be processed..." "INFO" "Yellow"
         Start-Sleep -Seconds 10
         
-        Write-LogMessage "âœ“ PC Health Check requirement handled with registry bypass active" " " "SUCCESS" "Green"
-        Write-LogMessage "âœ“ PC Health Check configured to report all requirements as met" " " "SUCCESS" "Green"
+        Write-LogMessage "✓ PC Health Check requirement handled with registry bypass active" "SUCCESS" "Green"
+        Write-LogMessage "✓ PC Health Check configured to report all requirements as met" "SUCCESS" "Green"
         return $true
         
     } catch {
-        Write-LogMessage "Error handling PC Health Check requirement: $($_.Exception.Message)" " " "ERROR" "Red"
+        Write-LogMessage "Error handling PC Health Check requirement: $($_.Exception.Message)" "ERROR" "Red"
         return $false
     }
 }
 
 function Windows11-Silent-Auto-Upgrade {
-    Write-LogMessage "Starting Windows 11 Hardware Bypass & Auto-Upgrade v3.4..." " " "INFO" "Green"
-    Write-LogMessage "Enhanced automation with PC Health Check and Installation Assistant bypass" " " "INFO" "Yellow"
+    Write-LogMessage "Starting Windows 11 Hardware Bypass & Auto-Upgrade v3.4..." "INFO" "Green"
+    Write-LogMessage "Enhanced automation with PC Health Check and Installation Assistant bypass" "INFO" "Yellow"
     
     # Initialize log file
     try {
@@ -854,7 +854,7 @@ function Windows11-Silent-Auto-Upgrade {
     
     try {
         # CRITICAL: Set all bypass registry entries FIRST before any compatibility checks
-        Write-LogMessage "PRIORITY: Setting comprehensive hardware bypass entries..." " " "INFO" "Magenta"
+        Write-LogMessage "PRIORITY: Setting comprehensive hardware bypass entries..." "INFO" "Magenta"
         Set-BypassRegistryEntries
         Set-PCHealthCheckBypass | Out-Null
         Set-InstallationAssistantBypass
@@ -868,14 +868,14 @@ function Windows11-Silent-Auto-Upgrade {
         Start-SilentWindows11Upgrade
         
     } catch {
-        Write-LogMessage "Upgrade failed: $($_.Exception.Message)" " " "ERROR" "Red"
-        Write-LogMessage "Check log file at: $global:LogFile" " " "INFO" "Yellow"
+        Write-LogMessage "Upgrade failed: $($_.Exception.Message)" "ERROR" "Red"
+        Write-LogMessage "Check log file at: $global:LogFile" "INFO" "Yellow"
         exit 1
     }
 }
 
 function Set-BypassRegistryEntries {
-    Write-LogMessage "Setting hardware bypass registry entries..." " " "INFO" "Cyan"
+    Write-LogMessage "Setting hardware bypass registry entries..." "INFO" "Cyan"
     
     try {
         # Create registry paths with enhanced error handling
@@ -884,20 +884,20 @@ function Set-BypassRegistryEntries {
         $moSetupPath = "$setupKeyPath\MoSetup"
         
         # Ensure paths exist and show progress
-        Write-LogMessage "Creating registry paths..." " " "INFO" "Yellow"
+        Write-LogMessage "Creating registry paths..." "INFO" "Yellow"
         
         $paths = @($setupKeyPath, $labConfigPath, $moSetupPath)
         foreach ($path in $paths) {
             if (!(Test-Path $path)) { 
                 try {
                     New-Item -Path $path -Force -ErrorAction Stop | Out-Null
-                    Write-LogMessage "Created: $path" " " "SUCCESS" "Gray"
+                    Write-LogMessage "Created: $path" "SUCCESS" "Gray"
                 } catch {
-                    Write-LogMessage "Failed to create path: $path - $($_.Exception.Message)" " " "ERROR" "Red"
+                    Write-LogMessage "Failed to create path: $path - $($_.Exception.Message)" "ERROR" "Red"
                     throw "Registry path creation failed"
                 }
             } else {
-                Write-LogMessage "Path exists: $path" " " "INFO" "Gray"
+                Write-LogMessage "Path exists: $path" "INFO" "Gray"
             }
         }
         
@@ -911,90 +911,90 @@ function Set-BypassRegistryEntries {
             "AllowUpgradesWithUnsupportedTPMOrCPU" = 1
         }
         
-        Write-LogMessage "Setting bypass registry values..." " " "INFO" "Yellow"
+        Write-LogMessage "Setting bypass registry values..." "INFO" "Yellow"
         foreach ($value in $bypassValues.GetEnumerator()) {
             try {
                 Set-ItemProperty -Path $labConfigPath -Name $value.Key -Value $value.Value -Type DWord -Force -ErrorAction Stop
-                Write-LogMessage "Set $($value.Key) = $($value.Value)" " " "SUCCESS" "Gray"
+                Write-LogMessage "Set $($value.Key) = $($value.Value)" "SUCCESS" "Gray"
             } catch {
-                Write-LogMessage "Failed to set $($value.Key): $($_.Exception.Message)" " " "ERROR" "Red"
+                Write-LogMessage "Failed to set $($value.Key): $($_.Exception.Message)" "ERROR" "Red"
             }
         }
         
         # Additional bypass for Windows Update with error handling
-        Write-LogMessage "Setting additional Windows Update bypass..." " " "INFO" "Yellow"
+        Write-LogMessage "Setting additional Windows Update bypass..." "INFO" "Yellow"
         try {
             Set-ItemProperty -Path $moSetupPath -Name "AllowUpgradesWithUnsupportedTPMOrCPU" -Value 1 -Type DWord -Force -ErrorAction Stop
-            Write-LogMessage "Set AllowUpgradesWithUnsupportedTPMOrCPU = 1" " " "SUCCESS" "Gray"
+            Write-LogMessage "Set AllowUpgradesWithUnsupportedTPMOrCPU = 1" "SUCCESS" "Gray"
         } catch {
-            Write-LogMessage "Failed to set MoSetup bypass: $($_.Exception.Message)" " " "WARNING" "Yellow"
+            Write-LogMessage "Failed to set MoSetup bypass: $($_.Exception.Message)" "WARNING" "Yellow"
         }
         
         # Enhanced Windows 11 compatibility entries
-        Write-LogMessage "Setting enhanced Windows 11 compatibility entries..." " " "INFO" "Yellow"
+        Write-LogMessage "Setting enhanced Windows 11 compatibility entries..." "INFO" "Yellow"
         
         # Windows Update service configuration with error handling
         $wuServicePath = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU"
         try {
             if (!(Test-Path $wuServicePath)) { 
                 New-Item -Path $wuServicePath -Force -ErrorAction Stop | Out-Null
-                Write-LogMessage "Created Windows Update AU path" " " "SUCCESS" "Gray"
+                Write-LogMessage "Created Windows Update AU path" "SUCCESS" "Gray"
             }
             Set-ItemProperty -Path $wuServicePath -Name "AllowMUUpdateService" -Value 1 -Type DWord -Force -ErrorAction Stop
-            Write-LogMessage "Set AllowMUUpdateService = 1" " " "SUCCESS" "Gray"
+            Write-LogMessage "Set AllowMUUpdateService = 1" "SUCCESS" "Gray"
         } catch {
-            Write-LogMessage "Failed to configure Windows Update service: $($_.Exception.Message)" " " "WARNING" "Yellow"
+            Write-LogMessage "Failed to configure Windows Update service: $($_.Exception.Message)" "WARNING" "Yellow"
         }
         
-        Write-LogMessage "âœ“ Hardware bypass registry entries set successfully!" " " "SUCCESS" "Green"
+        Write-LogMessage "✓ Hardware bypass registry entries set successfully!" "SUCCESS" "Green"
         
     } catch {
-        Write-LogMessage "Registry modification failed: $($_.Exception.Message)" " " "ERROR" "Red"
+        Write-LogMessage "Registry modification failed: $($_.Exception.Message)" "ERROR" "Red"
         throw "Critical registry modifications failed"
     }
 }
 
 function Start-SilentWindows11Upgrade {
-    Write-LogMessage "Starting Windows 11 upgrade process with enhanced automation..." " " "INFO" "Magenta"
+    Write-LogMessage "Starting Windows 11 upgrade process with enhanced automation..." "INFO" "Magenta"
     
     try {
         # Pre-flight: Handle PC Health Check requirement automatically
-        Write-LogMessage "Pre-flight: Handling PC Health Check requirement..." " " "INFO" "Cyan"
+        Write-LogMessage "Pre-flight: Handling PC Health Check requirement..." "INFO" "Cyan"
         $pcHealthCheckResult = Handle-PCHealthCheckRequirement
         if ($pcHealthCheckResult) {
-            Write-LogMessage "âœ“ PC Health Check requirement handled successfully" " " "SUCCESS" "Green"
+            Write-LogMessage "✓ PC Health Check requirement handled successfully" "SUCCESS" "Green"
         } else {
-            Write-LogMessage "PC Health Check handling completed with warnings - registry bypass is active" " " "WARNING" "Yellow"
-            Write-LogMessage "The registry bypass configuration ensures compatibility will be reported" " " "INFO" "Cyan"
+            Write-LogMessage "PC Health Check handling completed with warnings - registry bypass is active" "WARNING" "Yellow"
+            Write-LogMessage "The registry bypass configuration ensures compatibility will be reported" "INFO" "Cyan"
         }
         
         # Method 1: Enhanced Windows 11 Installation Assistant with retry logic
         $updateAssistantPath = "$env:TEMP\Windows11InstallationAssistant.exe"
         
-        Write-LogMessage "Downloading Windows 11 Installation Assistant..." " " "INFO" "Yellow"
+        Write-LogMessage "Downloading Windows 11 Installation Assistant..." "INFO" "Yellow"
         $downloadUrl = "https://go.microsoft.com/fwlink/?linkid=2171764"
         
         # Remove existing file if present
         if (Test-Path $updateAssistantPath) {
             try {
                 Remove-Item $updateAssistantPath -Force -ErrorAction Stop
-                Write-LogMessage "Removed existing Installation Assistant file" " " "INFO" "Gray"
+                Write-LogMessage "Removed existing Installation Assistant file" "INFO" "Gray"
             } catch {
-                Write-LogMessage "Could not remove existing file: $($_.Exception.Message)" " " "WARNING" "Yellow"
+                Write-LogMessage "Could not remove existing file: $($_.Exception.Message)" "WARNING" "Yellow"
             }
         }
         
         # Download with enhanced error handling and retry
         if (Download-FileWithProgress -Url $downloadUrl -OutFile $updateAssistantPath -TimeoutSeconds $global:DownloadTimeout -MaxRetries $global:MaxRetries) {
-            Write-LogMessage "Download completed successfully" " " "SUCCESS" "Green"
+            Write-LogMessage "Download completed successfully" "SUCCESS" "Green"
             
             if (Test-Path $updateAssistantPath) {
                 $fileSize = (Get-Item $updateAssistantPath).Length
-                Write-LogMessage "File size: $([math]::Round($fileSize/1MB, 2)) MB" " " "INFO" "Gray"
+                Write-LogMessage "File size: $([math]::Round($fileSize/1MB, 2)) MB" "INFO" "Gray"
                 
                 if ($fileSize -gt 1MB) {
-                    Write-LogMessage "Launching Windows 11 Installation Assistant with visible progress..." " " "INFO" "Green"
-                    Write-LogMessage "The Installation Assistant window will be displayed for you to monitor progress." " " "INFO" "Yellow"
+                    Write-LogMessage "Launching Windows 11 Installation Assistant with visible progress..." "INFO" "Green"
+                    Write-LogMessage "The Installation Assistant window will be displayed for you to monitor progress." "INFO" "Yellow"
                     
                     # Launch parameters for visible operation with hardware bypass
                     $processArgs = @{
@@ -1006,18 +1006,18 @@ function Start-SilentWindows11Upgrade {
                     }
                     
                     try {
-                        Write-LogMessage "Launching Windows 11 Installation Assistant with comprehensive bypass..." " " "INFO" "Green"
+                        Write-LogMessage "Launching Windows 11 Installation Assistant with comprehensive bypass..." "INFO" "Green"
                         $process = Start-Process @processArgs -ErrorAction Stop
-                        Write-LogMessage "âœ“ Installation Assistant started with Process ID: $($process.Id)" " " "SUCCESS" "Green"
+                        Write-LogMessage "✓ Installation Assistant started with Process ID: $($process.Id)" "SUCCESS" "Green"
                         
                         # Monitor for compatibility errors in the first few seconds
-                        Write-LogMessage "Monitoring Installation Assistant for compatibility errors..." " " "INFO" "Yellow"
+                        Write-LogMessage "Monitoring Installation Assistant for compatibility errors..." "INFO" "Yellow"
                         Start-Sleep -Seconds 15
                         
                         # Check if process exited early (likely due to compatibility error)
                         if ($process.HasExited) {
-                            Write-LogMessage "Installation Assistant exited early - likely compatibility error detected" " " "WARNING" "Yellow"
-                            Write-LogMessage "Attempting to restart with maximum bypass flags..." " " "INFO" "Cyan"
+                            Write-LogMessage "Installation Assistant exited early - likely compatibility error detected" "WARNING" "Yellow"
+                            Write-LogMessage "Attempting to restart with maximum bypass flags..." "INFO" "Cyan"
                             
                             # Try with even more aggressive bypass parameters
                             $aggressiveArgs = @{
@@ -1030,96 +1030,96 @@ function Start-SilentWindows11Upgrade {
                             
                             try {
                                 $process2 = Start-Process @aggressiveArgs -ErrorAction Stop
-                                Write-LogMessage "âœ“ Installation Assistant restarted with aggressive bypass (PID: $($process2.Id))" " " "SUCCESS" "Green"
+                                Write-LogMessage "✓ Installation Assistant restarted with aggressive bypass (PID: $($process2.Id))" "SUCCESS" "Green"
                                 $process = $process2  # Update process reference
                             } catch {
-                                Write-LogMessage "Failed to restart Installation Assistant: $($_.Exception.Message)" " " "ERROR" "Red"
-                                Write-LogMessage "Will continue with Windows Update methods..." " " "INFO" "Yellow"
+                                Write-LogMessage "Failed to restart Installation Assistant: $($_.Exception.Message)" "ERROR" "Red"
+                                Write-LogMessage "Will continue with Windows Update methods..." "INFO" "Yellow"
                             }
                         }
                         
                         # Enhanced monitoring for PC Health Check scenarios
                         if (!$process.HasExited) {
-                            Write-LogMessage "âœ“ Installation Assistant is running - monitoring for PC Health Check prompts" " " "SUCCESS" "Green"
+                            Write-LogMessage "✓ Installation Assistant is running - monitoring for PC Health Check prompts" "SUCCESS" "Green"
                             
                             # Check for PC Health Check requirement after 30 seconds
                             Start-Sleep -Seconds 30
                             
                             if (!$process.HasExited) {
-                                Write-LogMessage "Installation Assistant still running - checking if PC Health Check is needed" " " "INFO" "Yellow"
+                                Write-LogMessage "Installation Assistant still running - checking if PC Health Check is needed" "INFO" "Yellow"
                                 
                                 # Try to handle any PC Health Check prompts automatically
-                                Write-LogMessage "Attempting to handle any PC Health Check requirements automatically..." " " "INFO" "Cyan"
+                                Write-LogMessage "Attempting to handle any PC Health Check requirements automatically..." "INFO" "Cyan"
                                 
                                 # Run PC Health Check again if needed (it's safe to run multiple times)
                                 $additionalPCCheck = Handle-PCHealthCheckRequirement
                                 if ($additionalPCCheck) {
-                                    Write-LogMessage "âœ“ Additional PC Health Check handling completed" " " "SUCCESS" "Green"
-                                    Write-LogMessage "Waiting for Installation Assistant to detect PC Health Check completion..." " " "INFO" "Yellow"
+                                    Write-LogMessage "✓ Additional PC Health Check handling completed" "SUCCESS" "Green"
+                                    Write-LogMessage "Waiting for Installation Assistant to detect PC Health Check completion..." "INFO" "Yellow"
                                     Start-Sleep -Seconds 15
                                 }
                                 
                                 # Check final status
                                 if (!$process.HasExited) {
-                                    Write-LogMessage "âœ“ Installation Assistant continues running - upgrade in progress" " " "SUCCESS" "Green"
+                                    Write-LogMessage "✓ Installation Assistant continues running - upgrade in progress" "SUCCESS" "Green"
                                 } else {
-                                    Write-LogMessage "Installation Assistant completed - checking exit code..." " " "INFO" "Yellow"
+                                    Write-LogMessage "Installation Assistant completed - checking exit code..." "INFO" "Yellow"
                                     if ($process.ExitCode -eq 0) {
-                                        Write-LogMessage "âœ“ Installation Assistant completed successfully" " " "SUCCESS" "Green"
+                                        Write-LogMessage "✓ Installation Assistant completed successfully" "SUCCESS" "Green"
                                     } else {
-                                        Write-LogMessage "Installation Assistant exit code: $($process.ExitCode)" " " "WARNING" "Yellow"
+                                        Write-LogMessage "Installation Assistant exit code: $($process.ExitCode)" "WARNING" "Yellow"
                                     }
                                 }
                             } else {
-                                Write-LogMessage "Installation Assistant completed early - checking exit code..." " " "INFO" "Yellow"
+                                Write-LogMessage "Installation Assistant completed early - checking exit code..." "INFO" "Yellow"
                                 if ($process.ExitCode -eq 0) {
-                                    Write-LogMessage "âœ“ Installation Assistant completed successfully" " " "SUCCESS" "Green"
+                                    Write-LogMessage "✓ Installation Assistant completed successfully" "SUCCESS" "Green"
                                 } else {
-                                    Write-LogMessage "Installation Assistant exit code: $($process.ExitCode)" " " "WARNING" "Yellow"
-                                    Write-LogMessage "This may indicate PC Health Check was required - it has been handled automatically" " " "INFO" "Cyan"
+                                    Write-LogMessage "Installation Assistant exit code: $($process.ExitCode)" "WARNING" "Yellow"
+                                    Write-LogMessage "This may indicate PC Health Check was required - it has been handled automatically" "INFO" "Cyan"
                                 }
                             }
                         } else {
-                            Write-LogMessage "Installation Assistant completed quickly - checking exit code..." " " "INFO" "Yellow"
+                            Write-LogMessage "Installation Assistant completed quickly - checking exit code..." "INFO" "Yellow"
                             if ($process.ExitCode -eq 0) {
-                                Write-LogMessage "âœ“ Installation Assistant completed successfully" " " "SUCCESS" "Green"
+                                Write-LogMessage "✓ Installation Assistant completed successfully" "SUCCESS" "Green"
                             } else {
-                                Write-LogMessage "Installation Assistant exit code: $($process.ExitCode)" " " "WARNING" "Yellow"
-                                Write-LogMessage "PC Health Check requirement may have been encountered - it has been pre-handled" " " "INFO" "Cyan"
+                                Write-LogMessage "Installation Assistant exit code: $($process.ExitCode)" "WARNING" "Yellow"
+                                Write-LogMessage "PC Health Check requirement may have been encountered - it has been pre-handled" "INFO" "Cyan"
                             }
                         }
                         
-                        Write-LogMessage "âœ“ Installation Assistant processing completed with comprehensive bypass support" " " "SUCCESS" "Green"
+                        Write-LogMessage "✓ Installation Assistant processing completed with comprehensive bypass support" "SUCCESS" "Green"
                         
                     } catch {
-                        Write-LogMessage "Failed to start Installation Assistant: $($_.Exception.Message)" " " "ERROR" "Red"
-                        Write-LogMessage "Continuing with alternative methods..." " " "INFO" "Yellow"
+                        Write-LogMessage "Failed to start Installation Assistant: $($_.Exception.Message)" "ERROR" "Red"
+                        Write-LogMessage "Continuing with alternative methods..." "INFO" "Yellow"
                     }
                 } else {
-                    Write-LogMessage "Downloaded file appears to be incomplete (too small)" " " "ERROR" "Red"
+                    Write-LogMessage "Downloaded file appears to be incomplete (too small)" "ERROR" "Red"
                 }
             } else {
-                Write-LogMessage "Download verification failed - file not found" " " "ERROR" "Red"
+                Write-LogMessage "Download verification failed - file not found" "ERROR" "Red"
             }
         } else {
-            Write-LogMessage "Installation Assistant download failed after all retries" " " "ERROR" "Red"
-            Write-LogMessage "Continuing with Windows Update methods..." " " "INFO" "Yellow"
+            Write-LogMessage "Installation Assistant download failed after all retries" "ERROR" "Red"
+            Write-LogMessage "Continuing with Windows Update methods..." "INFO" "Yellow"
         }
         
         # Method 2: Enhanced Windows Update configuration
-        Write-LogMessage "Configuring Windows Update for automatic upgrade..." " " "INFO" "Cyan"
+        Write-LogMessage "Configuring Windows Update for automatic upgrade..." "INFO" "Cyan"
         
         try {
             # Configure Windows Update policies with enhanced error handling
             $wuPath = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate"
-            Write-LogMessage "Creating Windows Update policy path: $wuPath" " " "INFO" "Gray"
+            Write-LogMessage "Creating Windows Update policy path: $wuPath" "INFO" "Gray"
             
             if (!(Test-Path $wuPath)) { 
                 New-Item -Path $wuPath -Force -ErrorAction Stop | Out-Null
-                Write-LogMessage "Created Windows Update policy path" " " "SUCCESS" "Gray"
+                Write-LogMessage "Created Windows Update policy path" "SUCCESS" "Gray"
             }
             
-            Write-LogMessage "Setting Windows Update policies..." " " "INFO" "Yellow"
+            Write-LogMessage "Setting Windows Update policies..." "INFO" "Yellow"
             $wuPolicies = @{
                 "AcceptTrustedPublisherCerts" = 1
                 "ElevateNonAdmins" = 1
@@ -1130,22 +1130,22 @@ function Start-SilentWindows11Upgrade {
             foreach ($policy in $wuPolicies.GetEnumerator()) {
                 try {
                     Set-ItemProperty -Path $wuPath -Name $policy.Key -Value $policy.Value -Type DWord -Force -ErrorAction Stop
-                    Write-LogMessage "Set $($policy.Key) = $($policy.Value)" " " "SUCCESS" "Gray"
+                    Write-LogMessage "Set $($policy.Key) = $($policy.Value)" "SUCCESS" "Gray"
                 } catch {
-                    Write-LogMessage "Failed to set $($policy.Key): $($_.Exception.Message)" " " "WARNING" "Yellow"
+                    Write-LogMessage "Failed to set $($policy.Key): $($_.Exception.Message)" "WARNING" "Yellow"
                 }
             }
             
             # Configure automatic updates for fully automated operation
             $auPath = "$wuPath\AU"
-            Write-LogMessage "Creating Automatic Update path: $auPath" " " "INFO" "Gray"
+            Write-LogMessage "Creating Automatic Update path: $auPath" "INFO" "Gray"
             
             if (!(Test-Path $auPath)) { 
                 New-Item -Path $auPath -Force -ErrorAction Stop | Out-Null
-                Write-LogMessage "Created Automatic Update path" " " "SUCCESS" "Gray"
+                Write-LogMessage "Created Automatic Update path" "SUCCESS" "Gray"
             }
             
-            Write-LogMessage "Setting automatic update configuration for unattended operation..." " " "INFO" "Yellow"
+            Write-LogMessage "Setting automatic update configuration for unattended operation..." "INFO" "Yellow"
             $auSettings = @{
                 "NoAutoUpdate" = 0                    # Enable automatic updates
                 "AUOptions" = 4                       # Auto download and install
@@ -1159,23 +1159,23 @@ function Start-SilentWindows11Upgrade {
             foreach ($setting in $auSettings.GetEnumerator()) {
                 try {
                     Set-ItemProperty -Path $auPath -Name $setting.Key -Value $setting.Value -Type DWord -Force -ErrorAction Stop
-                    Write-LogMessage "Set $($setting.Key) = $($setting.Value)" " " "SUCCESS" "Gray"
+                    Write-LogMessage "Set $($setting.Key) = $($setting.Value)" "SUCCESS" "Gray"
                 } catch {
-                    Write-LogMessage "Failed to set $($setting.Key): $($_.Exception.Message)" " " "WARNING" "Yellow"
+                    Write-LogMessage "Failed to set $($setting.Key): $($_.Exception.Message)" "WARNING" "Yellow"
                 }
             }
             
         } catch {
-            Write-LogMessage "Windows Update configuration encountered errors: $($_.Exception.Message)" " " "WARNING" "Yellow"
-            Write-LogMessage "Continuing with update detection..." " " "INFO" "Yellow"
+            Write-LogMessage "Windows Update configuration encountered errors: $($_.Exception.Message)" "WARNING" "Yellow"
+            Write-LogMessage "Continuing with update detection..." "INFO" "Yellow"
         }
         
         # Method 3: Enhanced Windows Update automation with multiple strategies
-        Write-LogMessage "Initiating automated Windows 11 update detection and installation..." " " "INFO" "Cyan"
+        Write-LogMessage "Initiating automated Windows 11 update detection and installation..." "INFO" "Cyan"
         
         # Strategy 1: Direct Windows Update automation
         try {
-            Write-LogMessage "Creating Windows Update session..." " " "INFO" "Yellow"
+            Write-LogMessage "Creating Windows Update session..." "INFO" "Yellow"
             $updateSession = New-Object -ComObject Microsoft.Update.Session -ErrorAction Stop
             $updateSearcher = $updateSession.CreateUpdateSearcher()
             
@@ -1189,7 +1189,7 @@ function Start-SilentWindows11Upgrade {
             $windows11Updates = @()
             foreach ($query in $searchQueries) {
                 try {
-                    Write-LogMessage "Searching with query: $query" " " "INFO" "Gray"
+                    Write-LogMessage "Searching with query: $query" "INFO" "Gray"
                     $searchResult = $updateSearcher.Search($query)
                     
                     foreach ($update in $searchResult.Updates) {
@@ -1203,7 +1203,7 @@ function Start-SilentWindows11Upgrade {
                         foreach ($pattern in $windows11Patterns) {
                             if ($update.Title -like $pattern) {
                                 $isWindows11 = $true
-                                Write-LogMessage "Found Windows 11 update: $($update.Title)" " " "SUCCESS" "Cyan"
+                                Write-LogMessage "Found Windows 11 update: $($update.Title)" "SUCCESS" "Cyan"
                                 break
                             }
                         }
@@ -1213,57 +1213,57 @@ function Start-SilentWindows11Upgrade {
                         }
                     }
                     
-                    Write-LogMessage "Found $($searchResult.Updates.Count) updates in this search" " " "INFO" "Gray"
+                    Write-LogMessage "Found $($searchResult.Updates.Count) updates in this search" "INFO" "Gray"
                 } catch {
-                    Write-LogMessage "Search query failed: $query - $($_.Exception.Message)" " " "WARNING" "Yellow"
+                    Write-LogMessage "Search query failed: $query - $($_.Exception.Message)" "WARNING" "Yellow"
                 }
             }
             
             if ($windows11Updates.Count -gt 0) {
-                Write-LogMessage "Processing $($windows11Updates.Count) Windows 11 updates..." " " "INFO" "Yellow"
+                Write-LogMessage "Processing $($windows11Updates.Count) Windows 11 updates..." "INFO" "Yellow"
                 
                 $updateCollection = New-Object -ComObject Microsoft.Update.UpdateColl
                 foreach ($update in $windows11Updates) {
                     $updateCollection.Add($update) | Out-Null
-                    Write-LogMessage "Queued: $($update.Title)" " " "SUCCESS" "Green"
+                    Write-LogMessage "Queued: $($update.Title)" "SUCCESS" "Green"
                 }
                 
                 # Download and install automatically
-                Write-LogMessage "Downloading Windows 11 updates..." " " "INFO" "Yellow"
+                Write-LogMessage "Downloading Windows 11 updates..." "INFO" "Yellow"
                 $updateDownloader = $updateSession.CreateUpdateDownloader()
                 $updateDownloader.Updates = $updateCollection
                 
                 $downloadResult = $updateDownloader.Download()
-                Write-LogMessage "Download result code: $($downloadResult.ResultCode)" " " "INFO" "Gray"
+                Write-LogMessage "Download result code: $($downloadResult.ResultCode)" "INFO" "Gray"
                 
                 if ($downloadResult.ResultCode -eq 2) {
-                    Write-LogMessage "Installing Windows 11 updates..." " " "INFO" "Yellow"
+                    Write-LogMessage "Installing Windows 11 updates..." "INFO" "Yellow"
                     $updateInstaller = $updateSession.CreateUpdateInstaller()
                     $updateInstaller.Updates = $updateCollection
                     
                     $installationResult = $updateInstaller.Install()
-                    Write-LogMessage "Installation result code: $($installationResult.ResultCode)" " " "INFO" "Gray"
+                    Write-LogMessage "Installation result code: $($installationResult.ResultCode)" "INFO" "Gray"
                     
                     if ($installationResult.ResultCode -eq 2) {
-                        Write-LogMessage "âœ“ Windows 11 updates installed successfully!" " " "SUCCESS" "Green"
+                        Write-LogMessage "✓ Windows 11 updates installed successfully!" "SUCCESS" "Green"
                     } else {
-                        Write-LogMessage "Installation completed with code: $($installationResult.ResultCode)" " " "WARNING" "Yellow"
+                        Write-LogMessage "Installation completed with code: $($installationResult.ResultCode)" "WARNING" "Yellow"
                     }
                 } else {
-                    Write-LogMessage "Download failed with code: $($downloadResult.ResultCode)" " " "WARNING" "Yellow"
+                    Write-LogMessage "Download failed with code: $($downloadResult.ResultCode)" "WARNING" "Yellow"
                 }
             } else {
-                Write-LogMessage "No Windows 11 feature updates found through COM interface" " " "INFO" "Yellow"
-                Write-LogMessage "This may be normal - continuing with alternative triggers..." " " "INFO" "Cyan"
+                Write-LogMessage "No Windows 11 feature updates found through COM interface" "INFO" "Yellow"
+                Write-LogMessage "This may be normal - continuing with alternative triggers..." "INFO" "Cyan"
             }
             
         } catch {
-            Write-LogMessage "Windows Update COM automation failed: $($_.Exception.Message)" " " "WARNING" "Yellow"
-            Write-LogMessage "Continuing with alternative update methods..." " " "INFO" "Yellow"
+            Write-LogMessage "Windows Update COM automation failed: $($_.Exception.Message)" "WARNING" "Yellow"
+            Write-LogMessage "Continuing with alternative update methods..." "INFO" "Yellow"
         }
         
         # Method 4: Enhanced update triggers for comprehensive activation
-        Write-LogMessage "Executing comprehensive Windows 11 upgrade triggers..." " " "INFO" "Magenta"
+        Write-LogMessage "Executing comprehensive Windows 11 upgrade triggers..." "INFO" "Magenta"
         
         # Modern USOClient triggers with enhanced error handling
         $usoCommands = @(
@@ -1275,16 +1275,16 @@ function Start-SilentWindows11Upgrade {
         
         foreach ($cmd in $usoCommands) {
             try {
-                Write-LogMessage "Executing: usoclient.exe $($cmd.Command) - $($cmd.Description)" " " "INFO" "Yellow"
+                Write-LogMessage "Executing: usoclient.exe $($cmd.Command) - $($cmd.Description)" "INFO" "Yellow"
                 $process = Start-Process -FilePath "usoclient.exe" -ArgumentList $cmd.Command -Wait -PassThru -NoNewWindow -ErrorAction Stop
                 
                 if ($process.ExitCode -eq 0) {
-                    Write-LogMessage "âœ“ $($cmd.Command) completed successfully" " " "SUCCESS" "Green"
+                    Write-LogMessage "✓ $($cmd.Command) completed successfully" "SUCCESS" "Green"
                 } else {
-                    Write-LogMessage "$($cmd.Command) completed with exit code: $($process.ExitCode)" " " "WARNING" "Yellow"
+                    Write-LogMessage "$($cmd.Command) completed with exit code: $($process.ExitCode)" "WARNING" "Yellow"
                 }
             } catch {
-                Write-LogMessage "$($cmd.Command) failed: $($_.Exception.Message)" " " "WARNING" "Yellow"
+                Write-LogMessage "$($cmd.Command) failed: $($_.Exception.Message)" "WARNING" "Yellow"
             }
             
             # Small delay between commands for system processing
@@ -1299,37 +1299,37 @@ function Start-SilentWindows11Upgrade {
         
         foreach ($cmd in $legacyCommands) {
             try {
-                Write-LogMessage "Executing: wuauclt.exe $($cmd.Command) - $($cmd.Description)" " " "INFO" "Yellow"
+                Write-LogMessage "Executing: wuauclt.exe $($cmd.Command) - $($cmd.Description)" "INFO" "Yellow"
                 Start-Process -FilePath "wuauclt.exe" -ArgumentList $cmd.Command -NoNewWindow -ErrorAction Stop
-                Write-LogMessage "âœ“ Legacy trigger $($cmd.Command) executed" " " "SUCCESS" "Green"
+                Write-LogMessage "✓ Legacy trigger $($cmd.Command) executed" "SUCCESS" "Green"
             } catch {
-                Write-LogMessage "Legacy trigger $($cmd.Command) failed: $($_.Exception.Message)" " " "WARNING" "Yellow"
+                Write-LogMessage "Legacy trigger $($cmd.Command) failed: $($_.Exception.Message)" "WARNING" "Yellow"
             }
         }
         
         # Configure Windows Update service for feature updates
         try {
-            Write-LogMessage "Configuring Windows Update service for feature updates..." " " "INFO" "Yellow"
+            Write-LogMessage "Configuring Windows Update service for feature updates..." "INFO" "Yellow"
             $updateServiceManager = New-Object -ComObject Microsoft.Update.ServiceManager -ErrorAction Stop
             $updateService = $updateServiceManager.AddService2("7971f918-a847-4430-9279-4a52d1efe18d", 7, "")
-            Write-LogMessage "âœ“ Windows Update service configured for feature updates" " " "SUCCESS" "Green"
+            Write-LogMessage "✓ Windows Update service configured for feature updates" "SUCCESS" "Green"
         } catch {
-            Write-LogMessage "Feature update service configuration failed: $($_.Exception.Message)" " " "WARNING" "Yellow"
+            Write-LogMessage "Feature update service configuration failed: $($_.Exception.Message)" "WARNING" "Yellow"
         }
         
         # Method 5: Automated restart configuration (no user interaction)
-        Write-LogMessage "Configuring automated restart for upgrade completion..." " " "INFO" "Yellow"
+        Write-LogMessage "Configuring automated restart for upgrade completion..." "INFO" "Yellow"
         
         try {
             # Set automatic restart when upgrade is ready
             Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" -Name "AutoRestartShell" -Value 1 -Type DWord -Force -ErrorAction Stop
-            Write-LogMessage "âœ“ Configured automatic restart when upgrade is ready" " " "SUCCESS" "Green"
+            Write-LogMessage "✓ Configured automatic restart when upgrade is ready" "SUCCESS" "Green"
             
             # Configure system to allow automatic restart even with users logged on
             $restartPath = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU"
             if (Test-Path $restartPath) {
                 Set-ItemProperty -Path $restartPath -Name "NoAutoRebootWithLoggedOnUsers" -Value 0 -Type DWord -Force -ErrorAction Stop
-                Write-LogMessage "âœ“ Enabled automatic restart with logged on users" " " "SUCCESS" "Green"
+                Write-LogMessage "✓ Enabled automatic restart with logged on users" "SUCCESS" "Green"
             }
             
             # Set a scheduled restart as backup (4 hours from now)
@@ -1343,49 +1343,49 @@ function Start-SilentWindows11Upgrade {
                 # Create new scheduled task for backup restart
                 $result = schtasks /create /tn "Windows11UpgradeRestart" /tr "shutdown /r /f /t 0" /sc once /st $restartTime /sd $restartDate /f 2>$null
                 if ($LASTEXITCODE -eq 0) {
-                    Write-LogMessage "âœ“ Backup restart scheduled for $restartTime (4 hours from now)" " " "SUCCESS" "Green"
+                    Write-LogMessage "✓ Backup restart scheduled for $restartTime (4 hours from now)" "SUCCESS" "Green"
                 } else {
-                    Write-LogMessage "Could not create backup restart schedule" " " "WARNING" "Yellow"
+                    Write-LogMessage "Could not create backup restart schedule" "WARNING" "Yellow"
                 }
             } catch {
-                Write-LogMessage "Backup restart scheduling failed: $($_.Exception.Message)" " " "WARNING" "Yellow"
+                Write-LogMessage "Backup restart scheduling failed: $($_.Exception.Message)" "WARNING" "Yellow"
             }
             
         } catch {
-            Write-LogMessage "Restart configuration encountered errors: $($_.Exception.Message)" " " "WARNING" "Yellow"
+            Write-LogMessage "Restart configuration encountered errors: $($_.Exception.Message)" "WARNING" "Yellow"
         }
         
         # Final status and summary
-        Write-LogMessage "`n=== WINDOWS 11 UPGRADE FULLY INITIATED ===" " " "INFO" "Green"
-        Write-LogMessage "âœ“ Hardware bypass registry entries active" " " "SUCCESS" "White"
-        Write-LogMessage "âœ“ Installation Assistant hardware checks bypassed" " " "SUCCESS" "White"
-        Write-LogMessage "âœ“ PC Health Check app automatically installed and executed" " " "SUCCESS" "White"
-        Write-LogMessage "âœ“ PC Health Check configured to report all requirements as met" " " "SUCCESS" "White"
-        Write-LogMessage "âœ“ Windows 11 Installation Assistant executed with comprehensive bypass" " " "SUCCESS" "White"
-        Write-LogMessage "âœ“ Windows Update configured for automatic operation" " " "SUCCESS" "White"
-        Write-LogMessage "âœ“ Multiple upgrade triggers activated" " " "SUCCESS" "White"
-        Write-LogMessage "âœ“ Automatic restart configured" " " "SUCCESS" "White"
-        Write-LogMessage "âœ“ System fully prepared for unattended upgrade" " " "SUCCESS" "White"
+        Write-LogMessage "`n=== WINDOWS 11 UPGRADE FULLY INITIATED ===" "INFO" "Green"
+        Write-LogMessage "✓ Hardware bypass registry entries active" "SUCCESS" "White"
+        Write-LogMessage "✓ Installation Assistant hardware checks bypassed" "SUCCESS" "White"
+        Write-LogMessage "✓ PC Health Check app automatically installed and executed" "SUCCESS" "White"
+        Write-LogMessage "✓ PC Health Check configured to report all requirements as met" "SUCCESS" "White"
+        Write-LogMessage "✓ Windows 11 Installation Assistant executed with comprehensive bypass" "SUCCESS" "White"
+        Write-LogMessage "✓ Windows Update configured for automatic operation" "SUCCESS" "White"
+        Write-LogMessage "✓ Multiple upgrade triggers activated" "SUCCESS" "White"
+        Write-LogMessage "✓ Automatic restart configured" "SUCCESS" "White"
+        Write-LogMessage "✓ System fully prepared for unattended upgrade" "SUCCESS" "White"
         
-        Write-LogMessage "`nThe upgrade will proceed with visible progress:" " " "INFO" "Yellow"
-        Write-LogMessage "¢ PC Health Check compatibility verified automatically (bypassed)" " " "INFO" "Cyan"
-        Write-LogMessage "¢ Windows 11 Installation Assistant will show download progress" " " "INFO" "Cyan"
-        Write-LogMessage "¢ Installation progress will be visible to monitor" " " "INFO" "Cyan"  
-        Write-LogMessage "¢ System will restart automatically when upgrade is complete" " " "INFO" "Cyan"
-        Write-LogMessage "¢ You can monitor progress in the Installation Assistant window" " " "INFO" "Cyan"
+        Write-LogMessage "`nThe upgrade will proceed with visible progress:" "INFO" "Yellow"
+        Write-LogMessage "• PC Health Check compatibility verified automatically (bypassed)" "INFO" "Cyan"
+        Write-LogMessage "• Windows 11 Installation Assistant will show download progress" "INFO" "Cyan"
+        Write-LogMessage "• Installation progress will be visible to monitor" "INFO" "Cyan"  
+        Write-LogMessage "• System will restart automatically when upgrade is complete" "INFO" "Cyan"
+        Write-LogMessage "• You can monitor progress in the Installation Assistant window" "INFO" "Cyan"
         
         # Final comprehensive trigger
-        Write-LogMessage "`nExecuting final comprehensive update scan..." " " "INFO" "Magenta"
+        Write-LogMessage "`nExecuting final comprehensive update scan..." "INFO" "Magenta"
         try {
             Start-Process -FilePath "usoclient.exe" -ArgumentList "ScanInstallWait" -NoNewWindow
-            Write-LogMessage "Final update scan initiated" " " "SUCCESS" "Green"
+            Write-LogMessage "Final update scan initiated" "SUCCESS" "Green"
         } catch {
-            Write-LogMessage "Final update scan failed: $($_.Exception.Message)" " " "WARNING" "Yellow"
+            Write-LogMessage "Final update scan failed: $($_.Exception.Message)" "WARNING" "Yellow"
         }
         
     } catch {
-        Write-LogMessage "Upgrade initiation encountered errors: $($_.Exception.Message)" " " "ERROR" "Red"
-        Write-LogMessage "Registry bypass entries are still active for manual upgrade" " " "INFO" "Yellow"
+        Write-LogMessage "Upgrade initiation encountered errors: $($_.Exception.Message)" "ERROR" "Red"
+        Write-LogMessage "Registry bypass entries are still active for manual upgrade" "INFO" "Yellow"
         throw "Upgrade initiation failed"
     }
 }
@@ -1393,29 +1393,24 @@ function Start-SilentWindows11Upgrade {
 # Execute the complete upgrade
 Windows11-Silent-Auto-Upgrade
 
-Write-LogMessage "`n=== SCRIPT EXECUTION COMPLETE ===" " " "INFO" "Red"
-Write-LogMessage "âœ“ Hardware requirements bypassed" " " "SUCCESS" "Green"
-Write-LogMessage "âœ“ Installation Assistant hardware checks bypassed" " " "SUCCESS" "Green"
-Write-LogMessage "âœ“ PC Health Check app automatically handled" " " "SUCCESS" "Green"
-Write-LogMessage "âœ“ PC Health Check configured to bypass all hardware checks" " " "SUCCESS" "Green"
-Write-LogMessage "âœ“ Windows 11 upgrade fully automated and initiated" " " "SUCCESS" "Green"  
-Write-LogMessage "âœ“ All operations completed with enhanced error handling" " " "SUCCESS" "Green"
-Write-LogMessage "âœ“ System configured for automatic restart" " " "SUCCESS" "Green"
-Write-LogMessage "âœ“ Comprehensive logging enabled" " " "SUCCESS" "Green"
+Write-LogMessage "`n=== SCRIPT EXECUTION COMPLETE ===" "INFO" "Red"
+Write-LogMessage "✓ Hardware requirements bypassed" "SUCCESS" "Green"
+Write-LogMessage "✓ Installation Assistant hardware checks bypassed" "SUCCESS" "Green"
+Write-LogMessage "✓ PC Health Check app automatically handled" "SUCCESS" "Green"
+Write-LogMessage "✓ PC Health Check configured to bypass all hardware checks" "SUCCESS" "Green"
+Write-LogMessage "✓ Windows 11 upgrade fully automated and initiated" "SUCCESS" "Green"  
+Write-LogMessage "✓ All operations completed with enhanced error handling" "SUCCESS" "Green"
+Write-LogMessage "✓ System configured for automatic restart" "SUCCESS" "Green"
+Write-LogMessage "✓ Comprehensive logging enabled" "SUCCESS" "Green"
 
-Write-LogMessage "`nNext steps with visible progress:" " " "INFO" "Yellow"
-Write-LogMessage "¢ PC Health Check compatibility verified automatically (bypassed)" " " "INFO" "Cyan"
-Write-LogMessage "¢ Windows 11 Installation Assistant will show download progress" " " "INFO" "Cyan"
-Write-LogMessage "¢ Installation progress will be visible in the assistant window" " " "INFO" "Cyan"
-Write-LogMessage "¢ System will restart automatically when ready" " " "INFO" "Cyan"
-Write-LogMessage "¢ Monitor progress through the Installation Assistant interface" " " "INFO" "Cyan"
+Write-LogMessage "`nNext steps with visible progress:" "INFO" "Yellow"
+Write-LogMessage "• PC Health Check compatibility verified automatically (bypassed)" "INFO" "Cyan"
+Write-LogMessage "• Windows 11 Installation Assistant will show download progress" "INFO" "Cyan"
+Write-LogMessage "• Installation progress will be visible in the assistant window" "INFO" "Cyan"
+Write-LogMessage "• System will restart automatically when ready" "INFO" "Cyan"
+Write-LogMessage "• Monitor progress through the Installation Assistant interface" "INFO" "Cyan"
 
-Write-LogMessage "`nLog file location: $global:LogFile" " " "INFO" "Yellow"
-Write-LogMessage "Monitor Windows Update in Settings if needed" " " "INFO" "Cyan"
+Write-LogMessage "`nLog file location: $global:LogFile" "INFO" "Yellow"
+Write-LogMessage "Monitor Windows Update in Settings if needed" "INFO" "Cyan"
 
-Write-LogMessage "`nâœ“ Windows 11 upgrade initiated with visible progress monitoring!" " " "SUCCESS" "Green"
-
-
-
-
-
+Write-LogMessage "`n✓ Windows 11 upgrade initiated with visible progress monitoring!" "SUCCESS" "Green"
