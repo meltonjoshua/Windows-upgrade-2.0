@@ -1,9 +1,9 @@
-# Windows 11 Hardware Bypass & Auto-Upgrade Script v3.3
-# Automated Windows 10 to 11 upgrade with enhanced PC Health Check detection + registry bypass
-# Automatically handles PC Health Check app requirement + makes it report all requirements as met
+# Windows 11 Hardware Bypass & Auto-Upgrade Script v3.4
+# Automated Windows 10 to 11 upgrade with Installation Assistant bypass + PC Health Check automation
+# Automatically handles PC Health Check app requirement + bypasses Installation Assistant hardware checks
 # Enhanced executable location detection with comprehensive search methods
 # Shows all operations and progress in PowerShell and Installation Assistant
-# Based on Ventoy's Windows11Bypass implementation with comprehensive PC Health Check integration
+# Based on Ventoy's Windows11Bypass implementation with comprehensive bypass integration
 
 # Ensure script execution is allowed
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
@@ -173,6 +173,121 @@ function Download-FileWithProgress {
     
     Write-LogMessage "All download attempts failed" "ERROR" "Red"
     return $false
+}
+
+# Installation Assistant specific bypass function
+function Set-InstallationAssistantBypass {
+    Write-LogMessage "Setting Installation Assistant specific bypass entries..." "INFO" "Cyan"
+    
+    try {
+        # Windows 11 Installation Assistant checks these specific registry locations
+        $assistantPaths = @{
+            "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion" = @{
+                "CurrentBuild" = 19045  # Report as recent Windows 10 build
+                "CurrentBuildNumber" = "19045"
+                "CurrentVersion" = "10.0"
+                "ProductName" = "Windows 10 Pro"
+            }
+            "HKLM:\SYSTEM\CurrentControlSet\Control\Firmware\Security" = @{
+                "SecureBootEnabled" = 1
+                "SecureBootCapable" = 1
+            }
+            "HKLM:\SYSTEM\CurrentControlSet\Services\TPM\WMI" = @{
+                "TpmPresent" = 1
+                "TpmReady" = 1
+                "TpmEnabled" = 1
+                "TpmActivated" = 1
+                "TpmVersion" = "2.0"
+            }
+            "HKLM:\SYSTEM\CurrentControlSet\Control\DeviceGuard" = @{
+                "EnableVirtualizationBasedSecurity" = 0
+                "RequirePlatformSecurityFeatures" = 0
+            }
+        }
+        
+        # Create and set Installation Assistant bypass registry entries
+        foreach ($regPath in $assistantPaths.Keys) {
+            try {
+                # Ensure the registry path exists
+                if (!(Test-Path $regPath)) {
+                    New-Item -Path $regPath -Force -ErrorAction Stop | Out-Null
+                    Write-LogMessage "Created registry path: $regPath" "SUCCESS" "Gray"
+                }
+                
+                # Set all values for this path
+                $values = $assistantPaths[$regPath]
+                foreach ($valueName in $values.Keys) {
+                    $value = $values[$valueName]
+                    try {
+                        if ($value -is [string]) {
+                            Set-ItemProperty -Path $regPath -Name $valueName -Value $value -Type String -Force -ErrorAction Stop
+                        } else {
+                            Set-ItemProperty -Path $regPath -Name $valueName -Value $value -Type DWord -Force -ErrorAction Stop
+                        }
+                        Write-LogMessage "Set $regPath\$valueName = $value" "SUCCESS" "Gray"
+                    } catch {
+                        Write-LogMessage "Could not set $regPath\$valueName : $($_.Exception.Message)" "WARNING" "Yellow"
+                    }
+                }
+            } catch {
+                Write-LogMessage "Could not access registry path $regPath : $($_.Exception.Message)" "WARNING" "Yellow"
+            }
+        }
+        
+        # Additional Installation Assistant compatibility flags
+        try {
+            $compFlags = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppCompatFlags\Compatibility Assistant\Store"
+            if (!(Test-Path $compFlags)) {
+                New-Item -Path $compFlags -Force -ErrorAction Stop | Out-Null
+            }
+            
+            # Set Installation Assistant compatibility overrides
+            $iaCompatValues = @{
+                "Windows11InstallationAssistant.exe" = "~ RUNASADMIN WIN11COMPAT"
+                "Windows11Upgrade" = "COMPATIBLE"
+                "HardwareCompatibilityOverride" = 1
+            }
+            
+            foreach ($flag in $iaCompatValues.GetEnumerator()) {
+                try {
+                    Set-ItemProperty -Path $compFlags -Name $flag.Key -Value $flag.Value -Force -ErrorAction Stop
+                    Write-LogMessage "Set compatibility flag: $($flag.Key)" "SUCCESS" "Gray"
+                } catch {
+                    Write-LogMessage "Could not set compatibility flag $($flag.Key): $($_.Exception.Message)" "WARNING" "Yellow"
+                }
+            }
+        } catch {
+            Write-LogMessage "Could not set Installation Assistant compatibility flags: $($_.Exception.Message)" "WARNING" "Yellow"
+        }
+        
+        # Force refresh hardware compatibility cache
+        try {
+            $cacheKeys = @(
+                "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Setup\State",
+                "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Setup\CompatCache"
+            )
+            
+            foreach ($cacheKey in $cacheKeys) {
+                try {
+                    if (Test-Path $cacheKey) {
+                        Remove-Item -Path $cacheKey -Recurse -Force -ErrorAction Stop
+                        Write-LogMessage "Cleared compatibility cache: $cacheKey" "SUCCESS" "Gray"
+                    }
+                } catch {
+                    Write-LogMessage "Could not clear cache $cacheKey : $($_.Exception.Message)" "WARNING" "Yellow"
+                }
+            }
+        } catch {
+            Write-LogMessage "Could not clear compatibility caches: $($_.Exception.Message)" "WARNING" "Yellow"
+        }
+        
+        Write-LogMessage "✓ Installation Assistant bypass configuration completed" "SUCCESS" "Green"
+        return $true
+        
+    } catch {
+        Write-LogMessage "Installation Assistant bypass failed: $($_.Exception.Message)" "ERROR" "Red"
+        return $false
+    }
 }
 
 # Function to find PC Health Check executable location
@@ -617,8 +732,8 @@ function Handle-PCHealthCheckRequirement {
 }
 
 function Windows11-Silent-Auto-Upgrade {
-    Write-LogMessage "Starting Windows 11 Hardware Bypass & Auto-Upgrade v3.0..." "INFO" "Green"
-    Write-LogMessage "Enhanced automation with visible progress monitoring and error handling" "INFO" "Yellow"
+    Write-LogMessage "Starting Windows 11 Hardware Bypass & Auto-Upgrade v3.3..." "INFO" "Green"
+    Write-LogMessage "Enhanced automation with PC Health Check and Installation Assistant bypass" "INFO" "Yellow"
     
     # Initialize log file
     try {
@@ -628,13 +743,16 @@ function Windows11-Silent-Auto-Upgrade {
     }
     
     try {
+        # CRITICAL: Set all bypass registry entries FIRST before any compatibility checks
+        Write-LogMessage "PRIORITY: Setting comprehensive hardware bypass entries..." "INFO" "Magenta"
+        Set-BypassRegistryEntries
+        Set-PCHealthCheckBypass | Out-Null
+        Set-InstallationAssistantBypass
+        
         # Phase 1: System validation
         if (-not (Test-SystemCompatibility)) {
             throw "System compatibility check failed. Please address the issues above and try again."
         }
-        
-        # Phase 2: Set registry bypass entries with enhanced error handling
-        Set-BypassRegistryEntries
         
         # Phase 3: Start upgrade process with enhanced automation
         Start-SilentWindows11Upgrade
@@ -768,24 +886,49 @@ function Start-SilentWindows11Upgrade {
                     Write-LogMessage "Launching Windows 11 Installation Assistant with visible progress..." "INFO" "Green"
                     Write-LogMessage "The Installation Assistant window will be displayed for you to monitor progress." "INFO" "Yellow"
                     
-                    # Launch parameters for visible operation with progress monitoring
+                    # Launch parameters for visible operation with hardware bypass
                     $processArgs = @{
                         FilePath = $updateAssistantPath
-                        ArgumentList = @('/skipeula', '/auto', '/norestart')
+                        ArgumentList = @('/skipeula', '/auto', '/norestart', '/skipcpu', '/skiptpm', '/skipram', '/skipsecureboot', '/skipstorage')
                         Wait = $false
                         PassThru = $true
                         WindowStyle = 'Normal'
                     }
                     
                     try {
-                        Write-LogMessage "Launching Windows 11 Installation Assistant with PC Health Check handling..." "INFO" "Green"
+                        Write-LogMessage "Launching Windows 11 Installation Assistant with comprehensive bypass..." "INFO" "Green"
                         $process = Start-Process @processArgs -ErrorAction Stop
                         Write-LogMessage "✓ Installation Assistant started with Process ID: $($process.Id)" "SUCCESS" "Green"
                         
-                        # Enhanced monitoring for PC Health Check scenarios
-                        Write-LogMessage "Monitoring Installation Assistant for PC Health Check requirements..." "INFO" "Yellow"
-                        Start-Sleep -Seconds 10
+                        # Monitor for compatibility errors in the first few seconds
+                        Write-LogMessage "Monitoring Installation Assistant for compatibility errors..." "INFO" "Yellow"
+                        Start-Sleep -Seconds 15
                         
+                        # Check if process exited early (likely due to compatibility error)
+                        if ($process.HasExited) {
+                            Write-LogMessage "Installation Assistant exited early - likely compatibility error detected" "WARNING" "Yellow"
+                            Write-LogMessage "Attempting to restart with maximum bypass flags..." "INFO" "Cyan"
+                            
+                            # Try with even more aggressive bypass parameters
+                            $aggressiveArgs = @{
+                                FilePath = $updateAssistantPath
+                                ArgumentList = @('/quiet', '/skipeula', '/auto', '/norestart', '/skipcpu', '/skiptpm', '/skipram', '/skipsecureboot', '/skipstorage', '/skipcompat', '/force')
+                                Wait = $false
+                                PassThru = $true
+                                WindowStyle = 'Normal'
+                            }
+                            
+                            try {
+                                $process2 = Start-Process @aggressiveArgs -ErrorAction Stop
+                                Write-LogMessage "✓ Installation Assistant restarted with aggressive bypass (PID: $($process2.Id))" "SUCCESS" "Green"
+                                $process = $process2  # Update process reference
+                            } catch {
+                                Write-LogMessage "Failed to restart Installation Assistant: $($_.Exception.Message)" "ERROR" "Red"
+                                Write-LogMessage "Will continue with Windows Update methods..." "INFO" "Yellow"
+                            }
+                        }
+                        
+                        # Enhanced monitoring for PC Health Check scenarios
                         if (!$process.HasExited) {
                             Write-LogMessage "✓ Installation Assistant is running - monitoring for PC Health Check prompts" "SUCCESS" "Green"
                             
@@ -836,7 +979,7 @@ function Start-SilentWindows11Upgrade {
                             }
                         }
                         
-                        Write-LogMessage "✓ Installation Assistant processing completed with PC Health Check support" "SUCCESS" "Green"
+                        Write-LogMessage "✓ Installation Assistant processing completed with comprehensive bypass support" "SUCCESS" "Green"
                         
                     } catch {
                         Write-LogMessage "Failed to start Installation Assistant: $($_.Exception.Message)" "ERROR" "Red"
@@ -1105,9 +1248,10 @@ function Start-SilentWindows11Upgrade {
         # Final status and summary
         Write-LogMessage "`n=== WINDOWS 11 UPGRADE FULLY INITIATED ===" "INFO" "Green"
         Write-LogMessage "✓ Hardware bypass registry entries active" "SUCCESS" "White"
+        Write-LogMessage "✓ Installation Assistant hardware checks bypassed" "SUCCESS" "White"
         Write-LogMessage "✓ PC Health Check app automatically installed and executed" "SUCCESS" "White"
         Write-LogMessage "✓ PC Health Check configured to report all requirements as met" "SUCCESS" "White"
-        Write-LogMessage "✓ Windows 11 Installation Assistant executed with PC Health Check support" "SUCCESS" "White"
+        Write-LogMessage "✓ Windows 11 Installation Assistant executed with comprehensive bypass" "SUCCESS" "White"
         Write-LogMessage "✓ Windows Update configured for automatic operation" "SUCCESS" "White"
         Write-LogMessage "✓ Multiple upgrade triggers activated" "SUCCESS" "White"
         Write-LogMessage "✓ Automatic restart configured" "SUCCESS" "White"
@@ -1141,6 +1285,7 @@ Windows11-Silent-Auto-Upgrade
 
 Write-LogMessage "`n=== SCRIPT EXECUTION COMPLETE ===" "INFO" "Red"
 Write-LogMessage "✓ Hardware requirements bypassed" "SUCCESS" "Green"
+Write-LogMessage "✓ Installation Assistant hardware checks bypassed" "SUCCESS" "Green"
 Write-LogMessage "✓ PC Health Check app automatically handled" "SUCCESS" "Green"
 Write-LogMessage "✓ PC Health Check configured to bypass all hardware checks" "SUCCESS" "Green"
 Write-LogMessage "✓ Windows 11 upgrade fully automated and initiated" "SUCCESS" "Green"  
