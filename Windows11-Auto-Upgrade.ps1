@@ -1,4 +1,4 @@
-# Windows 11 Auto-Upgrade Script v6.3
+# Windows 11 Auto-Upgrade Script v6.4
 # Smart bypass - only applies modifications if system needs them  
 # Visible progress - shows Installation Assistant window with automated license acceptance
 
@@ -87,7 +87,7 @@ if (-NOT ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdent
     exit 1
 }
 
-Write-Host "Windows 11 Auto-Upgrade Script v6.3" -ForegroundColor Green
+Write-Host "Windows 11 Auto-Upgrade Script v6.4" -ForegroundColor Green
 Write-Host "Smart bypass with visible progress monitoring" -ForegroundColor Yellow
 Write-Host ""
 
@@ -304,7 +304,40 @@ $compatibilityIssues = Test-Windows11Compatibility    if ($compatibilityIssues.C
     
     Write-Host "✓ Windows Update components reset" -ForegroundColor Green
     
-    # Phase 4: Complete setup
+    # Phase 4: Download and launch Installation Assistant
+    Write-Host "Phase 4: Downloading and launching Installation Assistant..." -ForegroundColor Yellow
+    
+    try {
+        $assistantPath = "$env:TEMP\Windows11InstallationAssistant.exe"
+        $downloadUrl = "https://go.microsoft.com/fwlink/?linkid=2171764"
+        
+        if (Test-Path $assistantPath) {
+            Write-Host "Installation Assistant already downloaded" -ForegroundColor Gray
+        } else {
+            Write-Host "Downloading Installation Assistant..." -ForegroundColor Yellow
+            $webClient = New-Object System.Net.WebClient
+            $webClient.DownloadFile($downloadUrl, $assistantPath)
+            $webClient.Dispose()
+            Write-Host "✓ Installation Assistant downloaded" -ForegroundColor Green
+        }
+        
+        if (Test-Path $assistantPath) {
+            Write-Host "Launching Installation Assistant with automated license acceptance..." -ForegroundColor Yellow
+            $process = Start-AutomatedInstallationAssistant -AssistantPath $assistantPath
+            
+            if ($process) {
+                Write-Host "✓ Installation Assistant launched successfully (Process ID: $($process.Id))" -ForegroundColor Green
+            } else {
+                Write-Host "Warning: Installation Assistant may not have launched properly" -ForegroundColor Yellow
+            }
+        } else {
+            Write-Host "Error: Installation Assistant download failed" -ForegroundColor Red
+        }
+    } catch {
+        Write-Host "Error launching Installation Assistant: $($_.Exception.Message)" -ForegroundColor Red
+    }
+    
+    # Phase 5: Complete setup
     Write-Host ""
     Write-Host "=== WINDOWS 11 UPGRADE SETUP COMPLETED ===" -ForegroundColor Green
     if ($needsBypass) {
