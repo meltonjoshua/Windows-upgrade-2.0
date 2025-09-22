@@ -96,63 +96,67 @@ try {
 function Start-AutomatedInstallationAssistant {
     param($AssistantPath)
     
-    Write-Host "Starting Installation Assistant with proper command switches..." -ForegroundColor Yellow
+    Write-Host "Starting Installation Assistant with optimized command switches..." -ForegroundColor Yellow
     
-    # Use official Installation Assistant switches
+    # Get working directory for logs
+    $workingdir = Split-Path -Parent $AssistantPath
+    
+    # Use the exact switches you specified for best results
     $arguments = @(
-        '/quietinstall',    # Quiet installation mode
-        '/skipeula',        # Skip End User License Agreement
-        '/auto',            # Automatic mode
-        '/copylogs',        # Copy installation logs
-        '/migratedrivers',  # Migrate device drivers
-        '/showoobe',        # Show Out of Box Experience
-        '/telemetry',       # Enable telemetry
-        '/dynamicupdate'    # Enable dynamic updates
+        '/Install',           # Install mode
+        '/MinimizeToTaskbar', # Minimize to taskbar
+        '/QuietInstall',      # Quiet installation
+        '/SkipEULA',          # Skip End User License Agreement
+        '/copylogs',          # Copy logs
+        $workingdir           # Working directory for logs
     )
     
     try {
-        Write-Host "Launching with Installation Assistant switches: $($arguments -join ' ')" -ForegroundColor Gray
+        Write-Host "Launching with optimized switches: $($arguments -join ' ')" -ForegroundColor Gray
         
-        # Launch with official switches and normal window
+        # Launch with your specified switches
         $process = Start-Process -FilePath $AssistantPath -ArgumentList $arguments -PassThru -WindowStyle Normal
-        Write-Host "✓ Installation Assistant launched with official switches (Process ID: $($process.Id))" -ForegroundColor Green
+        Write-Host "✓ Installation Assistant launched with optimized switches (Process ID: $($process.Id))" -ForegroundColor Green
         
         # Monitor the process
         Start-Sleep -Seconds 5
         
         if (-not $process.HasExited) {
-            Write-Host "✓ Installation Assistant is running with proper switches" -ForegroundColor Green
-            Write-Host "✓ Using /quietinstall and /skipeula for automation" -ForegroundColor Cyan
-            Write-Host "✓ Process should handle license automatically" -ForegroundColor Green
+            Write-Host "✓ Installation Assistant running with /Install /MinimizeToTaskbar /QuietInstall /SkipEULA" -ForegroundColor Green
+            Write-Host "✓ Should minimize to taskbar and handle license automatically" -ForegroundColor Cyan
+            Write-Host "✓ Logs will be copied to: $workingdir" -ForegroundColor Yellow
             return $process
             
         } else {
-            Write-Host "Installation Assistant exited quickly - trying alternative switches..." -ForegroundColor Yellow
+            Write-Host "First method completed quickly - trying alternative AUTO upgrade method..." -ForegroundColor Yellow
             
-            # Try with minimal switches if first attempt failed
-            $altArgs = @('/auto', '/skipeula', '/copylogs')
+            # Try the second method you specified
+            $altArgs = @('/AUTO', 'upgrade', '/QuietInstall')
             $altProcess = Start-Process -FilePath $AssistantPath -ArgumentList $altArgs -PassThru -WindowStyle Normal
-            Write-Host "✓ Alternative switches launched (Process ID: $($altProcess.Id))" -ForegroundColor Green
+            Write-Host "✓ Alternative AUTO upgrade method launched (Process ID: $($altProcess.Id))" -ForegroundColor Green
+            Write-Host "✓ Using: /AUTO upgrade /QuietInstall" -ForegroundColor Cyan
             return $altProcess
         }
         
     } catch {
-        Write-Host "Error launching with switches: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "Error launching with optimized switches: $($_.Exception.Message)" -ForegroundColor Red
         
-        # Final fallback - basic switches
+        # Fallback to the AUTO upgrade method
         try {
-            Write-Host "Trying basic switches..." -ForegroundColor Yellow
-            $basicArgs = @('/auto')
-            $basicProcess = Start-Process -FilePath $AssistantPath -ArgumentList $basicArgs -PassThru -WindowStyle Normal
-            Write-Host "✓ Basic switches successful (Process ID: $($basicProcess.Id))" -ForegroundColor Green
-            return $basicProcess
+            Write-Host "Trying AUTO upgrade fallback..." -ForegroundColor Yellow
+            $autoArgs = @('/AUTO', 'upgrade', '/QuietInstall')
+            $autoProcess = Start-Process -FilePath $AssistantPath -ArgumentList $autoArgs -PassThru -WindowStyle Normal
+            Write-Host "✓ AUTO upgrade fallback successful (Process ID: $($autoProcess.Id))" -ForegroundColor Green
+            Write-Host "✓ Using: Windows11InstallationAssistant.exe /AUTO upgrade /QuietInstall" -ForegroundColor Cyan
+            return $autoProcess
         } catch {
-            Write-Host "All switch attempts failed - trying without parameters" -ForegroundColor Red
+            Write-Host "AUTO upgrade failed - trying basic method..." -ForegroundColor Red
             try {
-                $noArgsProcess = Start-Process -FilePath $AssistantPath -PassThru -WindowStyle Normal
-                Write-Host "✓ No parameters launch successful (Process ID: $($noArgsProcess.Id))" -ForegroundColor Green
-                Write-Host "Note: Manual interaction may be required" -ForegroundColor Yellow
-                return $noArgsProcess
+                # Final fallback
+                $basicArgs = @('/QuietInstall', '/SkipEULA')
+                $basicProcess = Start-Process -FilePath $AssistantPath -ArgumentList $basicArgs -PassThru -WindowStyle Normal
+                Write-Host "✓ Basic method successful (Process ID: $($basicProcess.Id))" -ForegroundColor Green
+                return $basicProcess
             } catch {
                 Write-Host "All launch attempts failed" -ForegroundColor Red
                 return $null
