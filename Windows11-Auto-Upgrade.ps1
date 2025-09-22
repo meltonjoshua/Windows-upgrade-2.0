@@ -96,51 +96,96 @@ try {
 function Start-AutomatedInstallationAssistant {
     param($AssistantPath)
     
-    Write-Host "Starting Installation Assistant without switches to prevent double-launch..." -ForegroundColor Yellow
+    Write-Host "Starting Installation Assistant with your specified switches..." -ForegroundColor Yellow
+    
+    # Get working directory for logs
+    $workingdir = Split-Path -Parent $AssistantPath
+    
+    # Try Method 1: Your first specified method
+    $method1Args = @(
+        '/Install',
+        '/MinimizeToTaskbar',
+        '/QuietInstall',
+        '/SkipEULA',
+        '/copylogs',
+        $workingdir
+    )
     
     try {
-        # Launch WITHOUT any switches to prevent exit/relaunch behavior
-        Write-Host "Launching Installation Assistant normally..." -ForegroundColor Gray
-        $process = Start-Process -FilePath $AssistantPath -PassThru -WindowStyle Normal
-        Write-Host "✓ Installation Assistant launched (Process ID: $($process.Id))" -ForegroundColor Green
+        Write-Host "Method 1: Trying /Install /MinimizeToTaskbar /QuietInstall /SkipEULA /copylogs..." -ForegroundColor Cyan
+        $process1 = Start-Process -FilePath $AssistantPath -ArgumentList $method1Args -PassThru -WindowStyle Normal
+        Start-Sleep -Seconds 6
         
-        # Wait for it to fully load
-        Start-Sleep -Seconds 8
-        
-        if (-not $process.HasExited) {
-            Write-Host "✓ Installation Assistant running successfully" -ForegroundColor Green
-            Write-Host "✓ Monitoring for license screen..." -ForegroundColor Cyan
-            
-            # Simple automation to handle license screen
-            Start-Sleep -Seconds 5
-            
-            # Try to auto-click the license acceptance
-            try {
-                Add-Type -AssemblyName System.Windows.Forms
-                Write-Host "Attempting to auto-accept license..." -ForegroundColor Yellow
-                
-                # Send Tab then Enter to accept license
-                [System.Windows.Forms.SendKeys]::SendWait("{TAB}")
-                Start-Sleep -Milliseconds 1500
-                [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
-                Start-Sleep -Milliseconds 1500
-                
-                Write-Host "✓ Auto-accept attempt completed" -ForegroundColor Green
-                Write-Host "✓ If license screen is still visible, please click 'Accept and install'" -ForegroundColor Yellow
-                
-            } catch {
-                Write-Host "Auto-accept failed - please manually click 'Accept and install'" -ForegroundColor Yellow
-            }
-            
-            return $process
-            
+        if (-not $process1.HasExited) {
+            Write-Host "✓ Method 1 successful (Process ID: $($process1.Id))" -ForegroundColor Green
+            return $process1
         } else {
-            Write-Host "Installation Assistant exited unexpectedly" -ForegroundColor Red
-            return $null
+            Write-Host "Method 1 exited - trying Method 2..." -ForegroundColor Yellow
         }
-        
     } catch {
-        Write-Host "Error launching Installation Assistant: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "Method 1 failed - trying Method 2..." -ForegroundColor Yellow
+    }
+    
+    # Try Method 2: AUTO upgrade
+    $method2Args = @('/AUTO', 'upgrade', '/QuietInstall')
+    try {
+        Write-Host "Method 2: Trying /AUTO upgrade /QuietInstall..." -ForegroundColor Cyan
+        $process2 = Start-Process -FilePath $AssistantPath -ArgumentList $method2Args -PassThru -WindowStyle Normal
+        Start-Sleep -Seconds 6
+        
+        if (-not $process2.HasExited) {
+            Write-Host "✓ Method 2 successful (Process ID: $($process2.Id))" -ForegroundColor Green
+            return $process2
+        } else {
+            Write-Host "Method 2 exited - trying Method 3..." -ForegroundColor Yellow
+        }
+    } catch {
+        Write-Host "Method 2 failed - trying Method 3..." -ForegroundColor Yellow
+    }
+    
+    # Try Method 3: QuietInstall SkipEULA Auto Upgrade
+    $method3Args = @('/QuietInstall', '/SkipEULA', '/Auto', 'Upgrade')
+    try {
+        Write-Host "Method 3: Trying /QuietInstall /SkipEULA /Auto Upgrade..." -ForegroundColor Cyan
+        $process3 = Start-Process -FilePath $AssistantPath -ArgumentList $method3Args -PassThru -WindowStyle Normal
+        Start-Sleep -Seconds 6
+        
+        if (-not $process3.HasExited) {
+            Write-Host "✓ Method 3 successful (Process ID: $($process3.Id))" -ForegroundColor Green
+            return $process3
+        } else {
+            Write-Host "Method 3 exited - trying Method 4..." -ForegroundColor Yellow
+        }
+    } catch {
+        Write-Host "Method 3 failed - trying Method 4..." -ForegroundColor Yellow
+    }
+    
+    # Try Method 4: With NoRestartUI
+    $method4Args = @('/QuietInstall', '/SkipEULA', '/Auto', 'Upgrade', '/NoRestartUI')
+    try {
+        Write-Host "Method 4: Trying /QuietInstall /SkipEULA /Auto Upgrade /NoRestartUI..." -ForegroundColor Cyan
+        $process4 = Start-Process -FilePath $AssistantPath -ArgumentList $method4Args -PassThru -WindowStyle Normal
+        Start-Sleep -Seconds 6
+        
+        if (-not $process4.HasExited) {
+            Write-Host "✓ Method 4 successful (Process ID: $($process4.Id))" -ForegroundColor Green
+            return $process4
+        } else {
+            Write-Host "Method 4 exited - trying fallback without switches..." -ForegroundColor Yellow
+        }
+    } catch {
+        Write-Host "Method 4 failed - trying fallback..." -ForegroundColor Yellow
+    }
+    
+    # Final fallback - no switches
+    try {
+        Write-Host "Fallback: Launching without switches..." -ForegroundColor Gray
+        $fallbackProcess = Start-Process -FilePath $AssistantPath -PassThru -WindowStyle Normal
+        Write-Host "✓ Fallback launch successful (Process ID: $($fallbackProcess.Id))" -ForegroundColor Green
+        Write-Host "Note: Manual click on 'Accept and install' may be required" -ForegroundColor Yellow
+        return $fallbackProcess
+    } catch {
+        Write-Host "All launch attempts failed" -ForegroundColor Red
         return $null
     }
 }
