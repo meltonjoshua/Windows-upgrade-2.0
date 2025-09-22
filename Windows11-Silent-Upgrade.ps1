@@ -1,5 +1,83 @@
-# Windows 11 Hardware Bypass & Silent Upgrade Script v4.1
-# Enhanced with 0xa0000400 error fix
+# Windows 11 Hardware Bypass & Silent Upgrade Script v4.2
+# Enhanced with 0xa0000400 error fix and smart bypass detection
+
+# Function to check Windows 11 compatibility
+function Test-Windows11Compatibility {
+    Write-Host "Checking Windows 11 hardware compatibility..." -ForegroundColor Yellow
+    
+    $compatibilityIssues = @()
+    
+    # Check TPM
+    try {
+        $tpm = Get-CimInstance -Namespace "Root\CimV2\Security\MicrosoftTpm" -ClassName "Win32_Tpm" -ErrorAction SilentlyContinue
+        if (-not $tpm -or $tpm.SpecVersion -notmatch "^2\.") {
+            $compatibilityIssues += "TPM 2.0 not found or not enabled"
+        } else {
+            Write-Host "✓ TPM 2.0 detected" -ForegroundColor Green
+        }
+    } catch {
+        $compatibilityIssues += "TPM status could not be determined"
+    }
+    
+    # Check Secure Boot
+    try {
+        $secureBootStatus = Confirm-SecureBootUEFI -ErrorAction SilentlyContinue
+        if (-not $secureBootStatus) {
+            $compatibilityIssues += "Secure Boot not enabled"
+        } else {
+            Write-Host "✓ Secure Boot enabled" -ForegroundColor Green
+        }
+    } catch {
+        $compatibilityIssues += "Secure Boot status could not be determined (possible BIOS mode)"
+    }
+    
+    # Check CPU compatibility (basic check)
+    try {
+        $cpu = Get-CimInstance -ClassName "Win32_Processor"
+        $cpuFamily = $cpu.Family
+        $cpuModel = $cpu.Model
+        
+        # Very basic check - Intel 6th gen+ or AMD Zen+
+        $isIntelCompatible = ($cpu.Manufacturer -like "*Intel*" -and $cpuFamily -ge 6 -and $cpuModel -ge 78)
+        $isAMDCompatible = ($cpu.Manufacturer -like "*AMD*" -and $cpuFamily -ge 23)
+        
+        if (-not ($isIntelCompatible -or $isAMDCompatible)) {
+            $compatibilityIssues += "CPU may not be Windows 11 compatible"
+        } else {
+            Write-Host "✓ CPU appears compatible" -ForegroundColor Green
+        }
+    } catch {
+        $compatibilityIssues += "CPU compatibility could not be determined"
+    }
+    
+    # Check RAM
+    try {
+        $ram = Get-CimInstance -ClassName "Win32_ComputerSystem"
+        $ramGB = [math]::Round($ram.TotalPhysicalMemory / 1GB, 2)
+        if ($ramGB -lt 4) {
+            $compatibilityIssues += "Insufficient RAM (need 4GB+, have $ramGB GB)"
+        } else {
+            Write-Host "✓ RAM sufficient ($ramGB GB)" -ForegroundColor Green
+        }
+    } catch {
+        $compatibilityIssues += "RAM amount could not be determined"
+    }
+    
+    # Check storage
+    try {
+        $systemDrive = Get-CimInstance -ClassName "Win32_LogicalDisk" | Where-Object { $_.DeviceID -eq $env:SystemDrive }
+        $freeSpaceGB = [math]::Round($systemDrive.FreeSpace / 1GB, 2)
+        if ($freeSpaceGB -lt 64) {
+            $compatibilityIssues += "Insufficient storage space (need 64GB+, have $freeSpaceGB GB free)"
+        } else {
+            Write-Host "✓ Storage sufficient ($freeSpaceGB GB free)" -ForegroundColor Green
+        }
+    } catch {
+        $compatibilityIssues += "Storage space could not be determined"
+    }
+    
+    return $compatibilityIssues
+}
 
 # Ensure running as Administrator
 if (-NOT ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
@@ -8,9 +86,30 @@ if (-NOT ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdent
     exit 1
 }
 
-Write-Host "Windows 11 Hardware Bypass & Silent Upgrade v4.1" -ForegroundColor Green
-Write-Host "Enhanced with 0xa0000400 error fix" -ForegroundColor Yellow
-Write-Host "Setting comprehensive hardware bypass registry entries..." -ForegroundColor Yellow
+Write-Host "Windows 11 Hardware Bypass & Silent Upgrade v4.2" -ForegroundColor Green
+Write-Host "Smart bypass - only modifies system if needed" -ForegroundColor Yellow
+Write-Host ""
+
+# Check Windows 11 compatibility first
+$compatibilityIssues = Test-Windows11Compatibility
+
+if ($compatibilityIssues.Count -eq 0) {
+    Write-Host "✓ SYSTEM IS ALREADY WINDOWS 11 COMPATIBLE!" -ForegroundColor Green
+    Write-Host "No registry modifications needed - proceeding with standard upgrade..." -ForegroundColor Cyan
+    $needsBypass = $false
+} else {
+    Write-Host "⚠ COMPATIBILITY ISSUES DETECTED:" -ForegroundColor Red
+    foreach ($issue in $compatibilityIssues) {
+        Write-Host "  • $issue" -ForegroundColor Yellow
+    }
+    Write-Host ""
+    Write-Host "✓ Applying bypass registry entries to resolve these issues..." -ForegroundColor Green
+    $needsBypass = $true
+}
+
+# Only apply bypasses if needed
+if ($needsBypass) {
+    Write-Host "Setting comprehensive hardware bypass registry entries..." -ForegroundColor Yellow
 
 try {
     # Create registry paths
@@ -191,8 +290,17 @@ try {
     exit 1
 }
 
+    Write-Host "✓ Bypass registry entries applied successfully" -ForegroundColor Green
+} else {
+    Write-Host "✓ Skipping registry modifications - system already compatible" -ForegroundColor Green
+}
+
 Write-Host "Downloading Windows 11 Installation Assistant..." -ForegroundColor Yellow
-Write-Host "IMPORTANT: After download, Installation Assistant will launch with full bypass" -ForegroundColor Cyan
+if ($needsBypass) {
+    Write-Host "IMPORTANT: Installation Assistant will launch with hardware bypasses active" -ForegroundColor Cyan
+} else {
+    Write-Host "IMPORTANT: Installation Assistant will launch with standard compatibility" -ForegroundColor Cyan
+}
 
 try {
     $assistantPath = "$env:TEMP\Windows11InstallationAssistant.exe"
