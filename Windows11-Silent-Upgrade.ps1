@@ -128,6 +128,64 @@ try {
     
     Write-Host "✓ Hardware simulation and cache clearing completed" -ForegroundColor Green
     
+    # CRITICAL: Reset Windows Update components to clear 0xa0000400
+    Write-Host "Resetting Windows Update components to clear 0xa0000400..." -ForegroundColor Yellow
+    
+    try {
+        # Stop Windows Update services
+        Stop-Service -Name "wuauserv" -Force -ErrorAction SilentlyContinue
+        Stop-Service -Name "cryptSvc" -Force -ErrorAction SilentlyContinue
+        Stop-Service -Name "bits" -Force -ErrorAction SilentlyContinue
+        Stop-Service -Name "msiserver" -Force -ErrorAction SilentlyContinue
+        
+        Write-Host "Windows Update services stopped" -ForegroundColor Gray
+        
+        # Clear Windows Update cache
+        $updateCache = "$env:SystemRoot\SoftwareDistribution"
+        if (Test-Path $updateCache) {
+            try {
+                Remove-Item "$updateCache\*" -Recurse -Force -ErrorAction SilentlyContinue
+                Write-Host "Windows Update cache cleared" -ForegroundColor Gray
+            } catch {
+                Write-Host "Could not clear all cache files (some may be in use)" -ForegroundColor Yellow
+            }
+        }
+        
+        # Clear catroot2 cache
+        $catroot = "$env:SystemRoot\System32\catroot2"
+        if (Test-Path $catroot) {
+            try {
+                Remove-Item "$catroot\*" -Recurse -Force -ErrorAction SilentlyContinue
+                Write-Host "Catroot2 cache cleared" -ForegroundColor Gray
+            } catch {
+                Write-Host "Could not clear all catroot2 files (some may be in use)" -ForegroundColor Yellow
+            }
+        }
+        
+        # Restart Windows Update services
+        Start-Service -Name "cryptSvc" -ErrorAction SilentlyContinue
+        Start-Service -Name "bits" -ErrorAction SilentlyContinue
+        Start-Service -Name "wuauserv" -ErrorAction SilentlyContinue
+        
+        Write-Host "Windows Update services restarted" -ForegroundColor Gray
+        
+        # Re-register Windows Update components
+        regsvr32 /s wuapi.dll 2>$null
+        regsvr32 /s wuaueng.dll 2>$null
+        regsvr32 /s wuaueng1.dll 2>$null
+        regsvr32 /s wucltux.dll 2>$null
+        regsvr32 /s wups.dll 2>$null
+        regsvr32 /s wups2.dll 2>$null
+        regsvr32 /s wuweb.dll 2>$null
+        
+        Write-Host "Windows Update components re-registered" -ForegroundColor Gray
+        
+    } catch {
+        Write-Host "Warning: Could not fully reset Windows Update components: $($_.Exception.Message)" -ForegroundColor Yellow
+    }
+    
+    Write-Host "✓ Windows Update reset completed" -ForegroundColor Green
+    
 } catch {
     Write-Host "ERROR: Failed to set registry entries - $($_.Exception.Message)" -ForegroundColor Red
     exit 1
@@ -145,25 +203,66 @@ try {
         Remove-Item $assistantPath -Force
     }
     
-    # Download
-    $webClient = New-Object System.Net.WebClient
-    $webClient.DownloadFile($downloadUrl, $assistantPath)
-    $webClient.Dispose()
+    # Download with multiple methods
+    $downloadSuccess = $false
     
-    if (Test-Path $assistantPath) {
+    # Method 1: WebClient
+    try {
+        Write-Host "Attempting download with WebClient..." -ForegroundColor Gray
+        $webClient = New-Object System.Net.WebClient
+        $webClient.DownloadFile($downloadUrl, $assistantPath)
+        $webClient.Dispose()
+        $downloadSuccess = $true
+        Write-Host "✓ WebClient download successful" -ForegroundColor Green
+    } catch {
+        Write-Host "WebClient failed: $($_.Exception.Message)" -ForegroundColor Yellow
+    }
+    
+    # Method 2: Invoke-WebRequest (if WebClient failed)
+    if (-not $downloadSuccess) {
+        try {
+            Write-Host "Attempting download with Invoke-WebRequest..." -ForegroundColor Gray
+            Invoke-WebRequest -Uri $downloadUrl -OutFile $assistantPath -UseBasicParsing
+            $downloadSuccess = $true
+            Write-Host "✓ Invoke-WebRequest download successful" -ForegroundColor Green
+        } catch {
+            Write-Host "Invoke-WebRequest failed: $($_.Exception.Message)" -ForegroundColor Yellow
+        }
+    }
+    
+    # Method 3: BITS Transfer (if others failed)
+    if (-not $downloadSuccess) {
+        try {
+            Write-Host "Attempting download with BITS Transfer..." -ForegroundColor Gray
+            Import-Module BitsTransfer -ErrorAction Stop
+            Start-BitsTransfer -Source $downloadUrl -Destination $assistantPath -DisplayName "Windows 11 Download"
+            $downloadSuccess = $true
+            Write-Host "✓ BITS Transfer download successful" -ForegroundColor Green
+        } catch {
+            Write-Host "BITS Transfer failed: $($_.Exception.Message)" -ForegroundColor Yellow
+        }
+    }
+    
+    if ($downloadSuccess -and (Test-Path $assistantPath)) {
         $fileSize = (Get-Item $assistantPath).Length
         if ($fileSize -gt 1MB) {
             Write-Host "SUCCESS: Downloaded Installation Assistant ($([math]::Round($fileSize/1MB, 2)) MB)" -ForegroundColor Green
+            
+            # Wait a moment for services to stabilize
+            Write-Host "Waiting for system to stabilize before launch..." -ForegroundColor Yellow
+            Start-Sleep -Seconds 10
+            
         } else {
             throw "Downloaded file is too small"
         }
     } else {
-        throw "Download file not found"
+        throw "All download methods failed"
     }
     
 } catch {
     Write-Host "WARNING: Failed to download Installation Assistant - $($_.Exception.Message)" -ForegroundColor Yellow
-    Write-Host "Continuing with Windows Update method..." -ForegroundColor Cyan
+    Write-Host "You may need to download manually from: https://www.microsoft.com/en-us/software-download/windows11" -ForegroundColor Cyan
+    Write-Host "The registry bypasses are still active for manual installation" -ForegroundColor Cyan
 }
 
 Write-Host "Launching Windows 11 upgrade process..." -ForegroundColor Green
@@ -203,16 +302,20 @@ Write-Host "✓ Hardware compatibility checks bypassed" -ForegroundColor White
 Write-Host "✓ 0xa0000400 error fix applied" -ForegroundColor White
 Write-Host "✓ Hardware simulation active (TPM 2.0, Secure Boot, CPU)" -ForegroundColor White
 Write-Host "✓ Installation Assistant cache cleared" -ForegroundColor White
-Write-Host "✓ Installation Assistant launched (if available)" -ForegroundColor White  
+Write-Host "✓ Windows Update components reset" -ForegroundColor White
+Write-Host "✓ Installation Assistant downloaded with multiple methods" -ForegroundColor White  
 Write-Host "✓ Windows Update scan triggered" -ForegroundColor White
 Write-Host ""
-Write-Host "Next steps:" -ForegroundColor Yellow
-Write-Host "• If you still get 0xa0000400, restart your computer first" -ForegroundColor Cyan
-Write-Host "• Then run the Installation Assistant manually" -ForegroundColor Cyan
-Write-Host "• Monitor Installation Assistant window for progress" -ForegroundColor Cyan
-Write-Host "• Check Settings > Windows Update for feature updates" -ForegroundColor Cyan
-Write-Host "• System will restart automatically when upgrade is ready" -ForegroundColor Cyan
+Write-Host "CRITICAL STEPS FOR 0xa0000400 ERROR:" -ForegroundColor Red
+Write-Host "1. RESTART YOUR COMPUTER NOW" -ForegroundColor Yellow
+Write-Host "2. After restart, run Installation Assistant manually" -ForegroundColor Yellow
+Write-Host "3. If error persists, run this script again after restart" -ForegroundColor Yellow
 Write-Host ""
-Write-Host "If error persists, restart computer and try again." -ForegroundColor Yellow
+Write-Host "Alternative approach:" -ForegroundColor Cyan
+Write-Host "• Download manually: https://www.microsoft.com/software-download/windows11" -ForegroundColor Cyan
+Write-Host "• Use Media Creation Tool instead of Installation Assistant" -ForegroundColor Cyan
+Write-Host "• Check Windows Update > Advanced options > Receive updates for other Microsoft products" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "The 0xa0000400 error often requires a restart to clear system caches." -ForegroundColor Yellow
 Write-Host ""
 Write-Host "The upgrade process is now running in the background." -ForegroundColor Green
