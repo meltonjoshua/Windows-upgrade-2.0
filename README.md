@@ -50,24 +50,24 @@ This repository contains an enhanced PowerShell script that performs an **automa
 3. Run: `Set-ExecutionPolicy Bypass -Scope Process`
 4. Run: `.\Windows11-Silent-Upgrade.ps1`
 
-### Method 3: One-Line GitHub Execution (Recommended for Remote Use)
+### Method 3: One-Line GitHub Execution (Recommended)
 
-**For MANUAL Windows 11 upgrade with 0xa0000400 error fix:**
+**COMPLETE one-liner - bypasses + visible Installation Assistant:**
 
 ```powershell
-Set-ExecutionPolicy Bypass -Scope Process -Force; Invoke-Expression (Invoke-WebRequest -Uri "https://raw.githubusercontent.com/meltonjoshua/Windows-upgrade-2.0/main/Windows11-Silent-Upgrade.ps1" -UseBasicParsing).Content
+iex (iwr "https://raw.githubusercontent.com/meltonjoshua/Windows-upgrade-2.0/main/Windows11-Silent-Upgrade.ps1" -UseBasicParsing).Content; $url = "https://go.microsoft.com/fwlink/?linkid=2171764"; $path = "$env:TEMP\Win11Visible.exe"; (New-Object Net.WebClient).DownloadFile($url, $path); Start-Process -FilePath $path -WindowStyle Normal
 ```
 
-**For FULLY AUTOMATED Windows 11 upgrade (no user interaction required):**
+**Just the visible Installation Assistant (if you already ran bypasses):**
 
 ```powershell
-Set-ExecutionPolicy Bypass -Scope Process -Force; Invoke-Expression (Invoke-WebRequest -Uri "https://raw.githubusercontent.com/meltonjoshua/Windows-upgrade-2.0/main/Windows11-Auto-Upgrade.ps1" -UseBasicParsing).Content
+$url = "https://go.microsoft.com/fwlink/?linkid=2171764"; $path = "$env:TEMP\Win11Visible.exe"; (New-Object Net.WebClient).DownloadFile($url, $path); Start-Process -FilePath $path -WindowStyle Normal
 ```
 
-**Alternative with comprehensive error handling:**
+**For automated bypass only (no Installation Assistant):**
 
 ```powershell
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/meltonjoshua/Windows-upgrade-2.0/main/Windows11-Auto-Upgrade.ps1" -OutFile "$env:TEMP\Windows11Upgrade.ps1"; Set-ExecutionPolicy Bypass -Scope Process -Force; & "$env:TEMP\Windows11Upgrade.ps1"
+iex (iwr "https://raw.githubusercontent.com/meltonjoshua/Windows-upgrade-2.0/main/Windows11-Auto-Upgrade.ps1" -UseBasicParsing).Content
 ```
 
 This will:
