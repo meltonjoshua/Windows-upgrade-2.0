@@ -96,53 +96,52 @@ try {
 function Start-AutomatedInstallationAssistant {
     param($AssistantPath)
     
-    Write-Host "Starting Installation Assistant with stable switches..." -ForegroundColor Yellow
-    
-    # Use simpler, more reliable switches to prevent double-launching
-    $arguments = @(
-        '/SkipEULA',        # Skip End User License Agreement
-        '/auto'             # Auto mode
-    )
+    Write-Host "Starting Installation Assistant without switches to prevent double-launch..." -ForegroundColor Yellow
     
     try {
-        Write-Host "Launching with stable switches: $($arguments -join ' ')" -ForegroundColor Gray
-        
-        # Launch with simple switches to prevent exit/relaunch
-        $process = Start-Process -FilePath $AssistantPath -ArgumentList $arguments -PassThru -WindowStyle Normal
+        # Launch WITHOUT any switches to prevent exit/relaunch behavior
+        Write-Host "Launching Installation Assistant normally..." -ForegroundColor Gray
+        $process = Start-Process -FilePath $AssistantPath -PassThru -WindowStyle Normal
         Write-Host "✓ Installation Assistant launched (Process ID: $($process.Id))" -ForegroundColor Green
         
-        # Wait longer to see if it stays running
+        # Wait for it to fully load
         Start-Sleep -Seconds 8
         
         if (-not $process.HasExited) {
-            Write-Host "✓ Installation Assistant running successfully with /SkipEULA /auto" -ForegroundColor Green
-            Write-Host "✓ Should skip license screen automatically" -ForegroundColor Cyan
+            Write-Host "✓ Installation Assistant running successfully" -ForegroundColor Green
+            Write-Host "✓ Monitoring for license screen..." -ForegroundColor Cyan
+            
+            # Simple automation to handle license screen
+            Start-Sleep -Seconds 5
+            
+            # Try to auto-click the license acceptance
+            try {
+                Add-Type -AssemblyName System.Windows.Forms
+                Write-Host "Attempting to auto-accept license..." -ForegroundColor Yellow
+                
+                # Send Tab then Enter to accept license
+                [System.Windows.Forms.SendKeys]::SendWait("{TAB}")
+                Start-Sleep -Milliseconds 1500
+                [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
+                Start-Sleep -Milliseconds 1500
+                
+                Write-Host "✓ Auto-accept attempt completed" -ForegroundColor Green
+                Write-Host "✓ If license screen is still visible, please click 'Accept and install'" -ForegroundColor Yellow
+                
+            } catch {
+                Write-Host "Auto-accept failed - please manually click 'Accept and install'" -ForegroundColor Yellow
+            }
+            
             return $process
             
         } else {
-            Write-Host "Process exited - trying without switches to prevent double launch..." -ForegroundColor Yellow
-            
-            # Try without any switches to prevent the double-launch issue
-            $simpleProcess = Start-Process -FilePath $AssistantPath -PassThru -WindowStyle Normal
-            Write-Host "✓ Simple launch without switches (Process ID: $($simpleProcess.Id))" -ForegroundColor Green
-            Write-Host "Note: You may need to click 'Accept and install' manually" -ForegroundColor Yellow
-            return $simpleProcess
+            Write-Host "Installation Assistant exited unexpectedly" -ForegroundColor Red
+            return $null
         }
         
     } catch {
         Write-Host "Error launching Installation Assistant: $($_.Exception.Message)" -ForegroundColor Red
-        
-        # Final fallback - just launch normally
-        try {
-            Write-Host "Trying basic launch to avoid multiple instances..." -ForegroundColor Yellow
-            $basicProcess = Start-Process -FilePath $AssistantPath -PassThru -WindowStyle Normal
-            Write-Host "✓ Basic launch successful (Process ID: $($basicProcess.Id))" -ForegroundColor Green
-            Write-Host "Note: Manual interaction required for license screen" -ForegroundColor Yellow
-            return $basicProcess
-        } catch {
-            Write-Host "Launch failed completely" -ForegroundColor Red
-            return $null
-        }
+        return $null
     }
 }
 
