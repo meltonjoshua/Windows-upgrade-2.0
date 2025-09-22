@@ -261,14 +261,30 @@ function Start-InstallationAssistant {
         
         # Verify file exists and launch
         if (Test-Path $Path) {
-            Write-Log "Launching Installation Assistant with UI automation..." -Level INFO
+            Write-Log "Launching Installation Assistant..." -Level INFO
             
-            # Launch without switches (most reliable) and handle license with automation
+            # Launch without switches (most reliable)
             $process = Start-Process -FilePath $Path -PassThru -WindowStyle Normal
-            Start-Sleep -Seconds 5
+            Start-Sleep -Seconds 3
             
+            # Check if process is still running or if Installation Assistant window exists
+            $assistantRunning = $false
+            
+            # Method 1: Check if our launched process is still alive
             if ($process -and -not $process.HasExited) {
+                $assistantRunning = $true
                 Write-Log "[OK] Installation Assistant launched successfully (PID: $($process.Id))" -Level SUCCESS
+            } else {
+                # Method 2: Check for any Installation Assistant processes
+                $existingProcesses = Get-Process -Name "*Windows11*", "*InstallationAssistant*", "*Windows*Upgrade*" -ErrorAction SilentlyContinue
+                if ($existingProcesses) {
+                    $assistantRunning = $true
+                    $process = $existingProcesses[0]
+                    Write-Log "[OK] Installation Assistant detected running (PID: $($process.Id))" -Level SUCCESS
+                }
+            }
+            
+            if ($assistantRunning) {
                 Write-Log "Adding automated license handling..." -Level INFO
                 
                 # Wait for window to fully load
@@ -295,7 +311,9 @@ function Start-InstallationAssistant {
                 
                 return $process
             } else {
-                throw "Installation Assistant failed to launch - process exited immediately"
+                Write-Log "Installation Assistant process not detected - it may have launched in a different way" -Level WARNING
+                Write-Log "Please check for any Installation Assistant windows that may need attention" -Level WARNING
+                return $null
             }
         } else {
             throw "Installation Assistant file not found after download"
