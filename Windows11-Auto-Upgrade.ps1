@@ -261,20 +261,41 @@ function Start-InstallationAssistant {
         
         # Verify file exists and launch
         if (Test-Path $Path) {
-            Write-Log "Launching Installation Assistant with proven working switches..." -Level INFO
+            Write-Log "Launching Installation Assistant with UI automation..." -Level INFO
             
-            # Use only the most reliable switch combination that works
-            $arguments = @('/SkipEULA')
-            
-            $process = Start-Process -FilePath $Path -ArgumentList $arguments -PassThru -WindowStyle Normal
-            Start-Sleep -Seconds 8
+            # Launch without switches (most reliable) and handle license with automation
+            $process = Start-Process -FilePath $Path -PassThru -WindowStyle Normal
+            Start-Sleep -Seconds 5
             
             if ($process -and -not $process.HasExited) {
-                Write-Log "✓ Installation Assistant launched successfully with /SkipEULA (PID: $($process.Id))" -Level SUCCESS
-                Write-Log "License screen will be skipped automatically" -Level INFO
+                Write-Log "✓ Installation Assistant launched successfully (PID: $($process.Id))" -Level SUCCESS
+                Write-Log "Adding automated license handling..." -Level INFO
+                
+                # Wait for window to fully load
+                Start-Sleep -Seconds 8
+                
+                # Attempt to auto-click license acceptance
+                try {
+                    Add-Type -AssemblyName System.Windows.Forms
+                    Write-Log "Attempting to auto-accept license agreement..." -Level INFO
+                    
+                    # Send keystrokes to handle license screen
+                    [System.Windows.Forms.SendKeys]::SendWait("{TAB}")
+                    Start-Sleep -Milliseconds 1000
+                    [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
+                    Start-Sleep -Milliseconds 1000
+                    [System.Windows.Forms.SendKeys]::SendWait(" ")  # Space bar for button click
+                    Start-Sleep -Milliseconds 1000
+                    
+                    Write-Log "✓ License automation completed - should proceed automatically" -Level SUCCESS
+                    
+                } catch {
+                    Write-Log "License automation failed - manual click on 'Accept and install' may be required" -Level WARNING
+                }
+                
                 return $process
             } else {
-                throw "Installation Assistant failed to launch properly with /SkipEULA switch"
+                throw "Installation Assistant failed to launch - process exited immediately"
             }
         } else {
             throw "Installation Assistant file not found after download"
