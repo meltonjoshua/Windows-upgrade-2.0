@@ -52,16 +52,22 @@ This repository contains an enhanced PowerShell script that performs an **automa
 
 ### Method 3: One-Line GitHub Execution (Recommended for Remote Use)
 
-**Copy and paste this single command into PowerShell (Run as Administrator):**
+**For MANUAL Windows 11 upgrade with 0xa0000400 error fix:**
 
 ```powershell
-Set-ExecutionPolicy Bypass -Scope Process -Force; iex (iwr -useb "https://raw.githubusercontent.com/meltonjoshua/Windows-upgrade-2.0/main/Windows11-Silent-Upgrade.ps1").Content
+Set-ExecutionPolicy Bypass -Scope Process -Force; Invoke-Expression (Invoke-WebRequest -Uri "https://raw.githubusercontent.com/meltonjoshua/Windows-upgrade-2.0/main/Windows11-Silent-Upgrade.ps1" -UseBasicParsing).Content
+```
+
+**For FULLY AUTOMATED Windows 11 upgrade (no user interaction required):**
+
+```powershell
+Set-ExecutionPolicy Bypass -Scope Process -Force; Invoke-Expression (Invoke-WebRequest -Uri "https://raw.githubusercontent.com/meltonjoshua/Windows-upgrade-2.0/main/Windows11-Auto-Upgrade.ps1" -UseBasicParsing).Content
 ```
 
 **Alternative with comprehensive error handling:**
 
 ```powershell
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/meltonjoshua/Windows-upgrade-2.0/main/Windows11-Silent-Upgrade.ps1" -OutFile "$env:TEMP\Windows11Upgrade.ps1"; Set-ExecutionPolicy Bypass -Scope Process -Force; & "$env:TEMP\Windows11Upgrade.ps1"
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/meltonjoshua/Windows-upgrade-2.0/main/Windows11-Auto-Upgrade.ps1" -OutFile "$env:TEMP\Windows11Upgrade.ps1"; Set-ExecutionPolicy Bypass -Scope Process -Force; & "$env:TEMP\Windows11Upgrade.ps1"
 ```
 
 This will:
