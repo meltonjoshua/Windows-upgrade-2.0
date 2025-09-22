@@ -14,14 +14,14 @@
     Skips the compatibility check and applies all bypasses
     
 .EXAMPLE
-    .\Windows11-Auto-Upgrade.ps1
+    .\Windows11-Auto-Upgrade-Clean.ps1
     
 .EXAMPLE
-    .\Windows11-Auto-Upgrade.ps1 -Force
+    .\Windows11-Auto-Upgrade-Clean.ps1 -Force
     
 .NOTES
-    Author: Joshua Melton
-    Version: 8.0 - Cleaned and Optimized
+    Author: Your Name
+    Version: 8.0
     Requires: PowerShell 5.1+, Administrator privileges
 #>
 
@@ -297,6 +297,29 @@ function Start-InstallationAssistant {
     } catch {
         Write-Log "Failed to launch Installation Assistant: $($_.Exception.Message)" -Level ERROR
         return $null
+    }
+}
+
+function Restore-SystemSettings {
+    <#
+    .SYNOPSIS
+        Restores original system settings after upgrade completion
+    #>
+    
+    Write-Log "Restoring original system settings..." -Level INFO
+    
+    try {
+        $ntVersionPath = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion"
+        if (Test-Path $ntVersionPath) {
+            $backupBuild = (Get-ItemProperty -Path $ntVersionPath -Name "CurrentBuild_Backup" -ErrorAction SilentlyContinue).CurrentBuild_Backup
+            if ($backupBuild) {
+                Set-ItemProperty -Path $ntVersionPath -Name "CurrentBuild" -Value $backupBuild -Force
+                Remove-ItemProperty -Path $ntVersionPath -Name "CurrentBuild_Backup" -Force -ErrorAction SilentlyContinue
+                Write-Log "✓ Original system build number restored" -Level SUCCESS
+            }
+        }
+    } catch {
+        Write-Log "Note: Could not restore all original settings - this is typically not critical" -Level WARNING
     }
 }
 
