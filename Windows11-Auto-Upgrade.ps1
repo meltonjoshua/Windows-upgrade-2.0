@@ -96,97 +96,50 @@ try {
 function Start-AutomatedInstallationAssistant {
     param($AssistantPath)
     
-    Write-Host "Starting Installation Assistant with your specified switches..." -ForegroundColor Yellow
+    Write-Host "Starting Installation Assistant with simple working switches..." -ForegroundColor Yellow
     
-    # Get working directory for logs
-    $workingdir = Split-Path -Parent $AssistantPath
-    
-    # Try Method 1: Your first specified method
-    $method1Args = @(
-        '/Install',
-        '/MinimizeToTaskbar',
+    # Use the most reliable switch combination
+    $arguments = @(
         '/QuietInstall',
-        '/SkipEULA',
-        '/copylogs',
-        $workingdir
+        '/SkipEULA'
     )
     
     try {
-        Write-Host "Method 1: Trying /Install /MinimizeToTaskbar /QuietInstall /SkipEULA /copylogs..." -ForegroundColor Cyan
-        $process1 = Start-Process -FilePath $AssistantPath -ArgumentList $method1Args -PassThru -WindowStyle Normal
-        Start-Sleep -Seconds 6
+        Write-Host "Launching with /QuietInstall /SkipEULA switches..." -ForegroundColor Cyan
+        $process = Start-Process -FilePath $AssistantPath -ArgumentList $arguments -PassThru -WindowStyle Normal
+        Write-Host "✓ Installation Assistant launched (Process ID: $($process.Id))" -ForegroundColor Green
         
-        if (-not $process1.HasExited) {
-            Write-Host "✓ Method 1 successful (Process ID: $($process1.Id))" -ForegroundColor Green
-            return $process1
-        } else {
-            Write-Host "Method 1 exited - trying Method 2..." -ForegroundColor Yellow
-        }
-    } catch {
-        Write-Host "Method 1 failed - trying Method 2..." -ForegroundColor Yellow
-    }
-    
-    # Try Method 2: AUTO upgrade
-    $method2Args = @('/AUTO', 'upgrade', '/QuietInstall')
-    try {
-        Write-Host "Method 2: Trying /AUTO upgrade /QuietInstall..." -ForegroundColor Cyan
-        $process2 = Start-Process -FilePath $AssistantPath -ArgumentList $method2Args -PassThru -WindowStyle Normal
-        Start-Sleep -Seconds 6
+        # Monitor the process
+        Start-Sleep -Seconds 8
         
-        if (-not $process2.HasExited) {
-            Write-Host "✓ Method 2 successful (Process ID: $($process2.Id))" -ForegroundColor Green
-            return $process2
+        if (-not $process.HasExited) {
+            Write-Host "✓ Installation Assistant running successfully with switches" -ForegroundColor Green
+            Write-Host "✓ Using /QuietInstall /SkipEULA for automation" -ForegroundColor Cyan
+            Write-Host "✓ License should be skipped automatically" -ForegroundColor Green
+            return $process
         } else {
-            Write-Host "Method 2 exited - trying Method 3..." -ForegroundColor Yellow
+            Write-Host "Switches caused exit - launching without switches..." -ForegroundColor Yellow
+            
+            # Simple fallback
+            $fallbackProcess = Start-Process -FilePath $AssistantPath -PassThru -WindowStyle Normal
+            Write-Host "✓ Fallback launch successful (Process ID: $($fallbackProcess.Id))" -ForegroundColor Green
+            Write-Host "Note: Manual click on 'Accept and install' required" -ForegroundColor Yellow
+            return $fallbackProcess
         }
-    } catch {
-        Write-Host "Method 2 failed - trying Method 3..." -ForegroundColor Yellow
-    }
-    
-    # Try Method 3: QuietInstall SkipEULA Auto Upgrade
-    $method3Args = @('/QuietInstall', '/SkipEULA', '/Auto', 'Upgrade')
-    try {
-        Write-Host "Method 3: Trying /QuietInstall /SkipEULA /Auto Upgrade..." -ForegroundColor Cyan
-        $process3 = Start-Process -FilePath $AssistantPath -ArgumentList $method3Args -PassThru -WindowStyle Normal
-        Start-Sleep -Seconds 6
         
-        if (-not $process3.HasExited) {
-            Write-Host "✓ Method 3 successful (Process ID: $($process3.Id))" -ForegroundColor Green
-            return $process3
-        } else {
-            Write-Host "Method 3 exited - trying Method 4..." -ForegroundColor Yellow
-        }
     } catch {
-        Write-Host "Method 3 failed - trying Method 4..." -ForegroundColor Yellow
-    }
-    
-    # Try Method 4: With NoRestartUI
-    $method4Args = @('/QuietInstall', '/SkipEULA', '/Auto', 'Upgrade', '/NoRestartUI')
-    try {
-        Write-Host "Method 4: Trying /QuietInstall /SkipEULA /Auto Upgrade /NoRestartUI..." -ForegroundColor Cyan
-        $process4 = Start-Process -FilePath $AssistantPath -ArgumentList $method4Args -PassThru -WindowStyle Normal
-        Start-Sleep -Seconds 6
+        Write-Host "Error with switches - trying without switches..." -ForegroundColor Yellow
         
-        if (-not $process4.HasExited) {
-            Write-Host "✓ Method 4 successful (Process ID: $($process4.Id))" -ForegroundColor Green
-            return $process4
-        } else {
-            Write-Host "Method 4 exited - trying fallback without switches..." -ForegroundColor Yellow
+        # Fallback launch
+        try {
+            $fallbackProcess = Start-Process -FilePath $AssistantPath -PassThru -WindowStyle Normal
+            Write-Host "✓ Fallback launch successful (Process ID: $($fallbackProcess.Id))" -ForegroundColor Green
+            Write-Host "Note: Manual click on 'Accept and install' required" -ForegroundColor Yellow
+            return $fallbackProcess
+        } catch {
+            Write-Host "Launch failed completely" -ForegroundColor Red
+            return $null
         }
-    } catch {
-        Write-Host "Method 4 failed - trying fallback..." -ForegroundColor Yellow
-    }
-    
-    # Final fallback - no switches
-    try {
-        Write-Host "Fallback: Launching without switches..." -ForegroundColor Gray
-        $fallbackProcess = Start-Process -FilePath $AssistantPath -PassThru -WindowStyle Normal
-        Write-Host "✓ Fallback launch successful (Process ID: $($fallbackProcess.Id))" -ForegroundColor Green
-        Write-Host "Note: Manual click on 'Accept and install' may be required" -ForegroundColor Yellow
-        return $fallbackProcess
-    } catch {
-        Write-Host "All launch attempts failed" -ForegroundColor Red
-        return $null
     }
 }
 
