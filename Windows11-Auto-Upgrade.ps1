@@ -22,12 +22,31 @@ if ($isPostRestart) {
     # Clean up environment variable
     [Environment]::SetEnvironmentVariable("WIN11_POST_RESTART", $null, "Machine")
     
-    # Remove the startup task
+    # Clean up all restart automation methods
     try {
-        schtasks /delete /tn "Windows11AutoUpgrade" /f 2>$null | Out-Null
-        Write-Host "Cleaned up restart task" -ForegroundColor Gray
+        # Remove registry entry
+        $runKeyPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run"
+        Remove-ItemProperty -Path $runKeyPath -Name "Windows11AutoUpgrade" -ErrorAction SilentlyContinue
+        
+        # Remove startup shortcut
+        $startupFolder = [System.Environment]::GetFolderPath('Startup')
+        $shortcutPath = "$startupFolder\Windows11AutoUpgrade.lnk"
+        if (Test-Path $shortcutPath) {
+            Remove-Item $shortcutPath -Force -ErrorAction SilentlyContinue
+        }
+        
+        # Remove scheduled task
+        Unregister-ScheduledTask -TaskName "Windows11AutoUpgrade" -Confirm:$false -ErrorAction SilentlyContinue
+        
+        # Remove temp script
+        $tempScript = "$env:TEMP\PostRestartUpgrade.ps1"
+        if (Test-Path $tempScript) {
+            Remove-Item $tempScript -Force -ErrorAction SilentlyContinue
+        }
+        
+        Write-Host "Cleaned up all restart automation entries" -ForegroundColor Gray
     } catch {
-        # Task may not exist
+        Write-Host "Warning: Could not clean up all entries" -ForegroundColor Yellow
     }
     
     # Wait for system to fully initialize
@@ -241,30 +260,64 @@ try {
     # Get the current script path for re-execution
     $scriptContent = @"
 Set-ExecutionPolicy Bypass -Scope Process -Force
+# Mark as post-restart
+`$env:WIN11_POST_RESTART = "1"
 [Environment]::SetEnvironmentVariable("WIN11_POST_RESTART", "1", "Machine")
-Invoke-Expression (Invoke-WebRequest -Uri "https://raw.githubusercontent.com/meltonjoshua/Windows-upgrade-2.0/main/Windows11-Auto-Upgrade.ps1" -UseBasicParsing).Content
+# Re-download and execute the script
+try {
+    Write-Host "POST-RESTART: Downloading and executing upgrade script..." -ForegroundColor Green
+    Invoke-Expression (Invoke-WebRequest -Uri "https://raw.githubusercontent.com/meltonjoshua/Windows-upgrade-2.0/main/Windows11-Auto-Upgrade.ps1" -UseBasicParsing).Content
+} catch {
+    Write-Host "Error: `$(`$_.Exception.Message)" -ForegroundColor Red
+    pause
+}
 "@
     
     $postRestartScript = "$env:TEMP\PostRestartUpgrade.ps1"
     $scriptContent | Out-File -FilePath $postRestartScript -Force
     
-    # Create scheduled task to run after restart
-    $action = New-ScheduledTaskAction -Execute "PowerShell.exe" -Argument "-ExecutionPolicy Bypass -File `"$postRestartScript`""
-    $trigger = New-ScheduledTaskTrigger -AtStartup
-    $principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest
-    $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
+    # Create a more reliable startup method using multiple approaches
+    $postRestartScript = "$env:TEMP\PostRestartUpgrade.ps1"
+    $scriptContent | Out-File -FilePath $postRestartScript -Force
     
+    # Method 1: Registry Run key (most reliable)
+    $runKeyPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run"
+    Set-ItemProperty -Path $runKeyPath -Name "Windows11AutoUpgrade" -Value "powershell.exe -ExecutionPolicy Bypass -WindowStyle Normal -File `"$postRestartScript`"" -Force
+    Write-Host "✓ Registry startup entry created" -ForegroundColor Green
+    
+    # Method 2: User startup folder
     try {
+        $startupFolder = [System.Environment]::GetFolderPath('Startup')
+        $shortcutPath = "$startupFolder\Windows11AutoUpgrade.lnk"
+        $WshShell = New-Object -ComObject WScript.Shell
+        $Shortcut = $WshShell.CreateShortcut($shortcutPath)
+        $Shortcut.TargetPath = "powershell.exe"
+        $Shortcut.Arguments = "-ExecutionPolicy Bypass -WindowStyle Normal -File `"$postRestartScript`""
+        $Shortcut.WorkingDirectory = $env:TEMP
+        $Shortcut.Save()
+        Write-Host "✓ Startup folder shortcut created" -ForegroundColor Green
+    } catch {
+        Write-Host "Warning: Could not create startup shortcut" -ForegroundColor Yellow
+    }
+    
+    # Method 3: Scheduled task as backup
+    try {
+        $action = New-ScheduledTaskAction -Execute "PowerShell.exe" -Argument "-ExecutionPolicy Bypass -WindowStyle Normal -File `"$postRestartScript`""
+        $trigger = New-ScheduledTaskTrigger -AtStartup
+        $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Highest
+        $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -ExecutionTimeLimit (New-TimeSpan -Hours 1)
+        
         # Remove existing task if it exists
         Unregister-ScheduledTask -TaskName "Windows11AutoUpgrade" -Confirm:$false -ErrorAction SilentlyContinue
         
         # Register new task
         Register-ScheduledTask -TaskName "Windows11AutoUpgrade" -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Force
-        Write-Host "✓ Restart continuation task created" -ForegroundColor Green
+        Write-Host "✓ Scheduled task backup created" -ForegroundColor Green
     } catch {
         Write-Host "Warning: Could not create scheduled task: $($_.Exception.Message)" -ForegroundColor Yellow
-        Write-Host "Manual restart will be required" -ForegroundColor Yellow
     }
+    
+    Write-Host "✓ Triple-redundant restart continuation configured" -ForegroundColor Green
     
     # Phase 5: Automatic restart
     Write-Host ""
@@ -276,6 +329,11 @@ Invoke-Expression (Invoke-WebRequest -Uri "https://raw.githubusercontent.com/mel
     Write-Host ""
     Write-Host "AUTOMATIC RESTART IN 10 SECONDS..." -ForegroundColor Red
     Write-Host "After restart, the upgrade will continue automatically." -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "MANUAL FALLBACK (if auto-restart fails):" -ForegroundColor Cyan
+    Write-Host "Run this command after restart as Administrator:" -ForegroundColor Cyan
+    Write-Host "`$env:WIN11_POST_RESTART='1'; iex (iwr -useb 'https://raw.githubusercontent.com/meltonjoshua/Windows-upgrade-2.0/main/Windows11-Auto-Upgrade.ps1').Content" -ForegroundColor White
+    Write-Host ""
     
     # Countdown
     for ($i = 10; $i -gt 0; $i--) {
