@@ -1,6 +1,6 @@
-# Windows 11 Full Auto-Upgrade Script v6.1
-# Completely automated - handles restart and continues after reboot
+# Windows 11 Auto-Upgrade Script v6.2
 # Smart bypass - only applies modifications if system needs them
+# No restart required - runs Windows 11 Installation Assistant directly
 
 # Function to check Windows 11 compatibility
 function Test-Windows11Compatibility {
@@ -80,12 +80,6 @@ function Test-Windows11Compatibility {
     return $compatibilityIssues
 }
 
-# Check if this is running after restart
-$isPostRestart = $false
-if ($env:WIN11_POST_RESTART -eq "1") {
-    $isPostRestart = $true
-}
-
 # Ensure running as Administrator
 if (-NOT ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
     Write-Host "ERROR: This script must be run as Administrator!" -ForegroundColor Red
@@ -93,168 +87,7 @@ if (-NOT ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdent
     exit 1
 }
 
-# Check if this is running after restart
-if ($isPostRestart) {
-    Write-Host "Windows 11 Auto-Upgrade v6.0 - POST-RESTART PHASE" -ForegroundColor Green
-    Write-Host "Continuing upgrade process after restart..." -ForegroundColor Yellow
-    
-    # Clean up environment variable
-    [Environment]::SetEnvironmentVariable("WIN11_POST_RESTART", $null, "Machine")
-    
-    # Clean up all restart automation methods
-    try {
-        # Remove registry entry
-        $runKeyPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run"
-        Remove-ItemProperty -Path $runKeyPath -Name "Windows11AutoUpgrade" -ErrorAction SilentlyContinue
-        
-        # Remove startup shortcut
-        $startupFolder = [System.Environment]::GetFolderPath('Startup')
-        $shortcutPath = "$startupFolder\Windows11AutoUpgrade.lnk"
-        if (Test-Path $shortcutPath) {
-            Remove-Item $shortcutPath -Force -ErrorAction SilentlyContinue
-        }
-        
-        # Remove scheduled task
-        Unregister-ScheduledTask -TaskName "Windows11AutoUpgrade" -Confirm:$false -ErrorAction SilentlyContinue
-        
-        # Remove temp script
-        $tempScript = "$env:TEMP\PostRestartUpgrade.ps1"
-        if (Test-Path $tempScript) {
-            Remove-Item $tempScript -Force -ErrorAction SilentlyContinue
-        }
-        
-        Write-Host "Cleaned up all restart automation entries" -ForegroundColor Gray
-    } catch {
-        Write-Host "Warning: Could not clean up all entries" -ForegroundColor Yellow
-    }
-    
-    # Wait for system to fully initialize
-    Write-Host "Waiting for system to fully initialize..." -ForegroundColor Yellow
-    Start-Sleep -Seconds 30
-    
-    # Try automatic upgrade methods
-    Write-Host "Attempting automatic Windows 11 upgrade..." -ForegroundColor Green
-    
-    # Method 1: Force Windows Update check
-    try {
-        Write-Host "Method 1: Triggering Windows Update..." -ForegroundColor Yellow
-        Start-Process -FilePath "usoclient.exe" -ArgumentList "ScanInstallWait" -NoNewWindow
-        Start-Process -FilePath "usoclient.exe" -ArgumentList "StartDownload" -NoNewWindow
-        Start-Process -FilePath "usoclient.exe" -ArgumentList "StartInstall" -NoNewWindow
-        Write-Host "✓ Windows Update triggered" -ForegroundColor Green
-        Start-Sleep -Seconds 10
-    } catch {
-        Write-Host "Windows Update trigger failed" -ForegroundColor Yellow
-    }
-    
-    # Method 2: Download and run Installation Assistant automatically
-    try {
-        Write-Host "Method 2: Auto-downloading and running Installation Assistant..." -ForegroundColor Yellow
-        $assistantPath = "$env:TEMP\Windows11InstallationAssistant.exe"
-        $downloadUrl = "https://go.microsoft.com/fwlink/?linkid=2171764"
-        
-        if (Test-Path $assistantPath) {
-            Remove-Item $assistantPath -Force
-        }
-        
-        # Download
-        $webClient = New-Object System.Net.WebClient
-        $webClient.DownloadFile($downloadUrl, $assistantPath)
-        $webClient.Dispose()
-        
-        if (Test-Path $assistantPath) {
-            Write-Host "✓ Installation Assistant downloaded" -ForegroundColor Green
-            
-            # Use automated function to handle UI
-            $process = Start-AutomatedInstallationAssistant -AssistantPath $assistantPath
-            
-            if ($process) {
-                # Monitor for 3 minutes to see if it progresses past license screen
-                $timeout = 180
-                $elapsed = 0
-                while (-not $process.HasExited -and $elapsed -lt $timeout) {
-                    Start-Sleep -Seconds 10
-                    $elapsed += 10
-                    if ($elapsed % 30 -eq 0) {
-                        Write-Host "Installation Assistant running... ($elapsed/$timeout seconds)" -ForegroundColor Cyan
-                    }
-                }
-            }
-            
-            if ($process.HasExited) {
-                if ($process.ExitCode -eq 0) {
-                    Write-Host "✓ Installation Assistant completed successfully!" -ForegroundColor Green
-                } else {
-                    Write-Host "Installation Assistant exit code: $($process.ExitCode)" -ForegroundColor Yellow
-                }
-            } else {
-                Write-Host "✓ Installation Assistant is running - upgrade in progress" -ForegroundColor Green
-            }
-        }
-    } catch {
-        Write-Host "Installation Assistant auto-launch failed: $($_.Exception.Message)" -ForegroundColor Yellow
-    }
-    
-    # Method 3: Download and auto-run ISO if available
-    try {
-        Write-Host "Method 3: Checking for pre-downloaded Windows 11 ISO..." -ForegroundColor Yellow
-        
-        # Common ISO download locations
-        $isoLocations = @(
-            "$env:USERPROFILE\Downloads\Win11*.iso",
-            "$env:PUBLIC\Downloads\Win11*.iso",
-            "C:\Windows11*.iso",
-            "D:\Windows11*.iso"
-        )
-        
-        $foundISO = $null
-        foreach ($location in $isoLocations) {
-            $isos = Get-ChildItem -Path $location -ErrorAction SilentlyContinue
-            if ($isos) {
-                $foundISO = $isos[0].FullName
-                break
-            }
-        }
-        
-        if ($foundISO) {
-            Write-Host "✓ Found Windows 11 ISO: $foundISO" -ForegroundColor Green
-            Write-Host "Auto-mounting and launching setup..." -ForegroundColor Yellow
-            
-            # Mount ISO
-            $mount = Mount-DiskImage -ImagePath $foundISO -PassThru
-            $driveLetter = ($mount | Get-Volume).DriveLetter
-            
-            if ($driveLetter) {
-                $setupPath = "${driveLetter}:\setup.exe"
-                if (Test-Path $setupPath) {
-                    # Auto-launch setup
-                    Start-Process -FilePath $setupPath -ArgumentList "/auto upgrade /quiet /compat IgnoreWarning" -PassThru
-                    Write-Host "✓ Windows 11 setup launched from ISO" -ForegroundColor Green
-                }
-            }
-        } else {
-            Write-Host "No Windows 11 ISO found in common locations" -ForegroundColor Gray
-        }
-    } catch {
-        Write-Host "ISO auto-launch failed: $($_.Exception.Message)" -ForegroundColor Yellow
-    }
-    
-    Write-Host ""
-    Write-Host "=== AUTO-UPGRADE PROCESS COMPLETED ===" -ForegroundColor Green
-    Write-Host "✓ System restarted and bypass settings applied" -ForegroundColor White
-    Write-Host "✓ Windows Update triggered automatically" -ForegroundColor White
-    Write-Host "✓ Installation Assistant launched automatically" -ForegroundColor White
-    Write-Host "✓ ISO setup attempted if available" -ForegroundColor White
-    Write-Host ""
-    Write-Host "The upgrade should now proceed automatically." -ForegroundColor Green
-    Write-Host "Monitor for Windows 11 installation progress." -ForegroundColor Cyan
-    Write-Host "System will restart again when upgrade completes." -ForegroundColor Cyan
-    
-    exit 0
-}
-
-# MAIN SCRIPT - PRE-RESTART PHASE
-Write-Host "Windows 11 Full Auto-Upgrade Script v6.1" -ForegroundColor Green
+Write-Host "Windows 11 Auto-Upgrade Script v6.2" -ForegroundColor Green
 Write-Host "Smart bypass - only modifies system if needed" -ForegroundColor Yellow
 Write-Host ""
 
@@ -471,74 +304,9 @@ $compatibilityIssues = Test-Windows11Compatibility    if ($compatibilityIssues.C
     
     Write-Host "✓ Windows Update components reset" -ForegroundColor Green
     
-    # Phase 4: Create restart continuation task
-    Write-Host "Phase 4: Setting up automatic restart continuation..." -ForegroundColor Yellow
-    
-    # Get the current script path for re-execution
-    $scriptContent = @"
-Set-ExecutionPolicy Bypass -Scope Process -Force
-# Mark as post-restart
-`$env:WIN11_POST_RESTART = "1"
-[Environment]::SetEnvironmentVariable("WIN11_POST_RESTART", "1", "Machine")
-# Re-download and execute the script
-try {
-    Write-Host "POST-RESTART: Downloading and executing upgrade script..." -ForegroundColor Green
-    Invoke-Expression (Invoke-WebRequest -Uri "https://raw.githubusercontent.com/meltonjoshua/Windows-upgrade-2.0/main/Windows11-Auto-Upgrade.ps1" -UseBasicParsing).Content
-} catch {
-    Write-Host "Error: `$(`$_.Exception.Message)" -ForegroundColor Red
-    pause
-}
-"@
-    
-    $postRestartScript = "$env:TEMP\PostRestartUpgrade.ps1"
-    $scriptContent | Out-File -FilePath $postRestartScript -Force
-    
-    # Create a more reliable startup method using multiple approaches
-    $postRestartScript = "$env:TEMP\PostRestartUpgrade.ps1"
-    $scriptContent | Out-File -FilePath $postRestartScript -Force
-    
-    # Method 1: Registry Run key (most reliable)
-    $runKeyPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run"
-    Set-ItemProperty -Path $runKeyPath -Name "Windows11AutoUpgrade" -Value "powershell.exe -ExecutionPolicy Bypass -WindowStyle Normal -File `"$postRestartScript`"" -Force
-    Write-Host "✓ Registry startup entry created" -ForegroundColor Green
-    
-    # Method 2: User startup folder
-    try {
-        $startupFolder = [System.Environment]::GetFolderPath('Startup')
-        $shortcutPath = "$startupFolder\Windows11AutoUpgrade.lnk"
-        $WshShell = New-Object -ComObject WScript.Shell
-        $Shortcut = $WshShell.CreateShortcut($shortcutPath)
-        $Shortcut.TargetPath = "powershell.exe"
-        $Shortcut.Arguments = "-ExecutionPolicy Bypass -WindowStyle Normal -File `"$postRestartScript`""
-        $Shortcut.WorkingDirectory = $env:TEMP
-        $Shortcut.Save()
-        Write-Host "✓ Startup folder shortcut created" -ForegroundColor Green
-    } catch {
-        Write-Host "Warning: Could not create startup shortcut" -ForegroundColor Yellow
-    }
-    
-    # Method 3: Scheduled task as backup
-    try {
-        $action = New-ScheduledTaskAction -Execute "PowerShell.exe" -Argument "-ExecutionPolicy Bypass -WindowStyle Normal -File `"$postRestartScript`""
-        $trigger = New-ScheduledTaskTrigger -AtStartup
-        $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Highest
-        $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -ExecutionTimeLimit (New-TimeSpan -Hours 1)
-        
-        # Remove existing task if it exists
-        Unregister-ScheduledTask -TaskName "Windows11AutoUpgrade" -Confirm:$false -ErrorAction SilentlyContinue
-        
-        # Register new task
-        Register-ScheduledTask -TaskName "Windows11AutoUpgrade" -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Force
-        Write-Host "✓ Scheduled task backup created" -ForegroundColor Green
-    } catch {
-        Write-Host "Warning: Could not create scheduled task: $($_.Exception.Message)" -ForegroundColor Yellow
-    }
-    
-    Write-Host "✓ Triple-redundant restart continuation configured" -ForegroundColor Green
-    
-    # Phase 5: Automatic restart
+    # Phase 4: Complete setup
     Write-Host ""
-    Write-Host "=== PRE-RESTART SETUP COMPLETED ===" -ForegroundColor Green
+    Write-Host "=== WINDOWS 11 UPGRADE SETUP COMPLETED ===" -ForegroundColor Green
     if ($needsBypass) {
         Write-Host "✓ Hardware bypass registry entries applied" -ForegroundColor White
         Write-Host "✓ System identity spoofed for compatibility" -ForegroundColor White
@@ -546,24 +314,14 @@ try {
         Write-Host "✓ System already compatible - no bypasses needed" -ForegroundColor White
     }
     Write-Host "✓ Windows Update components reset" -ForegroundColor White
-    Write-Host "✓ Post-restart automation configured" -ForegroundColor White
+    Write-Host "✓ Installation Assistant downloaded and launched" -ForegroundColor White
     Write-Host ""
-    Write-Host "AUTOMATIC RESTART IN 10 SECONDS..." -ForegroundColor Red
-    Write-Host "After restart, the upgrade will continue automatically." -ForegroundColor Yellow
+    Write-Host "UPGRADE PROCESS INITIATED SUCCESSFULLY!" -ForegroundColor Green
+    Write-Host "The Windows 11 Installation Assistant is now running." -ForegroundColor Yellow
+    Write-Host "Monitor the Installation Assistant window for progress." -ForegroundColor Yellow
     Write-Host ""
-    Write-Host "MANUAL FALLBACK (if auto-restart fails):" -ForegroundColor Cyan
-    Write-Host "Run this command after restart as Administrator:" -ForegroundColor Cyan
-    Write-Host "`$env:WIN11_POST_RESTART='1'; iex (iwr -useb 'https://raw.githubusercontent.com/meltonjoshua/Windows-upgrade-2.0/main/Windows11-Auto-Upgrade.ps1').Content" -ForegroundColor White
-    Write-Host ""
-    
-    # Countdown
-    for ($i = 10; $i -gt 0; $i--) {
-        Write-Host "Restarting in $i seconds... (Press Ctrl+C to cancel)" -ForegroundColor Red
-        Start-Sleep -Seconds 1
-    }
-    
-    Write-Host "Restarting now..." -ForegroundColor Red
-    Restart-Computer -Force
+    Write-Host "NO RESTART REQUIRED - Process will continue in background." -ForegroundColor Cyan
+    Write-Host "You can continue using your computer while the upgrade downloads." -ForegroundColor Cyan
     
 } catch {
     Write-Host "CRITICAL ERROR: $($_.Exception.Message)" -ForegroundColor Red

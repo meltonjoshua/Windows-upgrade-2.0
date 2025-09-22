@@ -1,5 +1,5 @@
-# Windows 11 Hardware Bypass & Silent Upgrade Script v4.2
-# Enhanced with 0xa0000400 error fix and smart bypass detection
+# Windows 11 Hardware Bypass & Silent Upgrade Script v4.3
+# Smart bypass detection - only modifies system if needed
 
 # Function to check Windows 11 compatibility
 function Test-Windows11Compatibility {
