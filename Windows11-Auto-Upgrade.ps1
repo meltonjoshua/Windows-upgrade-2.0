@@ -21,7 +21,7 @@
     
 .NOTES
     Author: Joshua Melton
-    Version: 8.3 - UI Automation Fix
+    Version: 8.0 - Cleaned and Optimized
     Requires: PowerShell 5.1+, Administrator privileges
 #>
 
@@ -33,7 +33,7 @@ param(
 
 # Script Configuration
 $script:Config = @{
-    ScriptVersion = "8.3"
+    ScriptVersion = "8.0"
     ScriptName = "Windows 11 Auto-Upgrade Script"
     DownloadUrl = "https://go.microsoft.com/fwlink/?linkid=2171764"
     TempPath = "$env:TEMP\Windows11InstallationAssistant.exe"
