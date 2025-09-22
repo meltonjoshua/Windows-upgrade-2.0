@@ -19,9 +19,9 @@ if ($currentProcess.CommandLine -like "*PostRestart*") {
 if ($isPostRestart) {
     Write-Host "Launching POST-RESTART phase..." -ForegroundColor Green
     $env:WIN11_POST_RESTART = "1"
-    iex (iwr -useb "https://raw.githubusercontent.com/meltonjoshua/Windows-upgrade-2.0/main/Windows11-Auto-Upgrade.ps1")
+    Invoke-Expression (Invoke-WebRequest -Uri "https://raw.githubusercontent.com/meltonjoshua/Windows-upgrade-2.0/main/Windows11-Auto-Upgrade.ps1" -UseBasicParsing).Content
 } else {
     Write-Host "Launching PRE-RESTART phase..." -ForegroundColor Yellow
     $env:WIN11_POST_RESTART = "0"
-    iex (iwr -useb "https://raw.githubusercontent.com/meltonjoshua/Windows-upgrade-2.0/main/Windows11-Auto-Upgrade.ps1")
+    Invoke-Expression (Invoke-WebRequest -Uri "https://raw.githubusercontent.com/meltonjoshua/Windows-upgrade-2.0/main/Windows11-Auto-Upgrade.ps1" -UseBasicParsing).Content
 }

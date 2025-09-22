@@ -242,7 +242,7 @@ try {
     $scriptContent = @"
 Set-ExecutionPolicy Bypass -Scope Process -Force
 [Environment]::SetEnvironmentVariable("WIN11_POST_RESTART", "1", "Machine")
-iex (iwr -useb "https://raw.githubusercontent.com/meltonjoshua/Windows-upgrade-2.0/main/Windows11-Auto-Upgrade.ps1")
+Invoke-Expression (Invoke-WebRequest -Uri "https://raw.githubusercontent.com/meltonjoshua/Windows-upgrade-2.0/main/Windows11-Auto-Upgrade.ps1" -UseBasicParsing).Content
 "@
     
     $postRestartScript = "$env:TEMP\PostRestartUpgrade.ps1"
