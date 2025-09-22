@@ -78,7 +78,7 @@ function Test-SystemCompatibility {
         if (-not $tpm -or $tpm.SpecVersion -notmatch "^2\.") {
             $issues += "TPM 2.0 not found or not enabled"
         } else {
-            Write-Log "[OK] TPM 2.0 detected and enabled" -Level SUCCESS
+            Write-Log "✓ TPM 2.0 detected and enabled" -Level SUCCESS
         }
         
         # Check Secure Boot
@@ -86,7 +86,7 @@ function Test-SystemCompatibility {
         if (-not $secureBootStatus) {
             $issues += "Secure Boot not enabled"
         } else {
-            Write-Log "[OK] Secure Boot enabled" -Level SUCCESS
+            Write-Log "✓ Secure Boot enabled" -Level SUCCESS
         }
         
         # Check CPU compatibility
@@ -97,7 +97,7 @@ function Test-SystemCompatibility {
         if (-not ($isIntelCompatible -or $isAMDCompatible)) {
             $issues += "CPU may not meet Windows 11 requirements"
         } else {
-            Write-Log "[OK] CPU appears compatible ($($cpu.Name))" -Level SUCCESS
+            Write-Log "✓ CPU appears compatible ($($cpu.Name))" -Level SUCCESS
         }
         
         # Check RAM (4GB minimum)
@@ -106,7 +106,7 @@ function Test-SystemCompatibility {
         if ($ramGB -lt 4) {
             $issues += "Insufficient RAM (need 4GB+, have $ramGB GB)"
         } else {
-            Write-Log "[OK] Sufficient RAM detected ($ramGB GB)" -Level SUCCESS
+            Write-Log "✓ Sufficient RAM detected ($ramGB GB)" -Level SUCCESS
         }
         
         # Check storage (64GB minimum free)
@@ -115,7 +115,7 @@ function Test-SystemCompatibility {
         if ($freeSpaceGB -lt 64) {
             $issues += "Insufficient storage space (need 64GB+, have $freeSpaceGB GB free)"
         } else {
-            Write-Log "[OK] Sufficient storage space ($freeSpaceGB GB free)" -Level SUCCESS
+            Write-Log "✓ Sufficient storage space ($freeSpaceGB GB free)" -Level SUCCESS
         }
         
     } catch {
@@ -166,7 +166,7 @@ function Set-CompatibilityBypass {
                 Set-ItemProperty -Path $regPath -Name $valueName -Value $value -Type DWord -Force -ErrorAction Stop
             }
             
-            Write-Log "[OK] Applied bypass settings to $regPath" -Level SUCCESS
+            Write-Log "✓ Applied bypass settings to $regPath" -Level SUCCESS
         }
         
         # Temporarily spoof system version for compatibility
@@ -180,7 +180,7 @@ function Set-CompatibilityBypass {
             Set-ItemProperty -Path $ntVersionPath -Name "CurrentBuild" -Value "19044" -Force
             Set-ItemProperty -Path $ntVersionPath -Name "CurrentBuildNumber" -Value "19044" -Force
             
-            Write-Log "[OK] System version temporarily modified for compatibility" -Level SUCCESS
+            Write-Log "✓ System version temporarily modified for compatibility" -Level SUCCESS
         }
         
         return $true
@@ -226,7 +226,7 @@ function Reset-WindowsUpdateComponents {
             Write-Log "Restarted service: $service" -Level INFO
         }
         
-        Write-Log "[OK] Windows Update components reset successfully" -Level SUCCESS
+        Write-Log "✓ Windows Update components reset successfully" -Level SUCCESS
         return $true
         
     } catch {
@@ -254,7 +254,7 @@ function Start-InstallationAssistant {
             $webClient = New-Object System.Net.WebClient
             $webClient.DownloadFile($script:Config.DownloadUrl, $Path)
             $webClient.Dispose()
-            Write-Log "[OK] Installation Assistant downloaded" -Level SUCCESS
+            Write-Log "✓ Installation Assistant downloaded" -Level SUCCESS
         } else {
             Write-Log "Installation Assistant already present" -Level INFO
         }
@@ -268,7 +268,7 @@ function Start-InstallationAssistant {
             Start-Sleep -Seconds 5
             
             if ($process -and -not $process.HasExited) {
-                Write-Log "[OK] Installation Assistant launched successfully (PID: $($process.Id))" -Level SUCCESS
+                Write-Log "✓ Installation Assistant launched successfully (PID: $($process.Id))" -Level SUCCESS
                 Write-Log "Adding automated license handling..." -Level INFO
                 
                 # Wait for window to fully load
@@ -287,7 +287,7 @@ function Start-InstallationAssistant {
                     [System.Windows.Forms.SendKeys]::SendWait(" ")  # Space bar for button click
                     Start-Sleep -Milliseconds 1000
                     
-                    Write-Log "[OK] License automation completed - should proceed automatically" -Level SUCCESS
+                    Write-Log "✓ License automation completed - should proceed automatically" -Level SUCCESS
                     
                 } catch {
                     Write-Log "License automation failed - manual click on 'Accept and install' may be required" -Level WARNING
@@ -323,21 +323,21 @@ function Show-CompletionSummary {
     Write-Log "" -Level INFO
     
     if ($BypassApplied) {
-        Write-Log "[OK] Hardware compatibility bypass applied" -Level SUCCESS
+        Write-Log "✓ Hardware compatibility bypass applied" -Level SUCCESS
     } else {
-        Write-Log "[OK] System already compatible - no bypass needed" -Level SUCCESS
+        Write-Log "✓ System already compatible - no bypass needed" -Level SUCCESS
     }
     
-    Write-Log "[OK] Windows Update components reset" -Level SUCCESS
-    Write-Log "[OK] Installation Assistant launched" -Level SUCCESS
+    Write-Log "✓ Windows Update components reset" -Level SUCCESS
+    Write-Log "✓ Installation Assistant launched" -Level SUCCESS
     Write-Log "" -Level INFO
     
     if ($Process) {
         Write-Log "INSTALLATION STATUS:" -Level INFO
-        Write-Log "- Installation Assistant is running (Process ID: $($Process.Id))" -Level INFO
-        Write-Log "- The process should minimize to taskbar and handle license automatically" -Level INFO
-        Write-Log "- Windows 11 download and installation will proceed automatically" -Level INFO
-        Write-Log "- No user interaction should be required" -Level INFO
+        Write-Log "• Installation Assistant is running (Process ID: $($Process.Id))" -Level INFO
+        Write-Log "• The process should minimize to taskbar and handle license automatically" -Level INFO
+        Write-Log "• Windows 11 download and installation will proceed automatically" -Level INFO
+        Write-Log "• No user interaction should be required" -Level INFO
     } else {
         Write-Log "WARNING: Installation Assistant may not have launched properly" -Level WARNING
         Write-Log "Please check for any Installation Assistant windows that may require attention" -Level WARNING
@@ -369,7 +369,7 @@ try {
         $compatibilityIssues = Test-SystemCompatibility
         
         if ($compatibilityIssues.Count -eq 0 -and -not $Force) {
-            Write-Log "[OK] System meets all Windows 11 hardware requirements" -Level SUCCESS
+            Write-Log "✓ System meets all Windows 11 hardware requirements" -Level SUCCESS
             Write-Log "No compatibility bypass needed - proceeding with standard upgrade" -Level INFO
             $bypassNeeded = $false
         } else {
@@ -378,7 +378,7 @@ try {
             } else {
                 Write-Log "Compatibility issues detected:" -Level WARNING
                 foreach ($issue in $compatibilityIssues) {
-                    Write-Log "  - $issue" -Level WARNING
+                    Write-Log "  • $issue" -Level WARNING
                 }
             }
             Write-Log "Applying compatibility bypass to resolve hardware requirements" -Level INFO
