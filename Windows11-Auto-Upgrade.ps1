@@ -96,83 +96,67 @@ try {
 function Start-AutomatedInstallationAssistant {
     param($AssistantPath)
     
-    Write-Host "Starting Installation Assistant with visible progress..." -ForegroundColor Yellow
+    Write-Host "Starting Installation Assistant with proper command switches..." -ForegroundColor Yellow
     
-    # First try with license bypass parameters and visible window
+    # Use official Installation Assistant switches
     $arguments = @(
-        '/accepteula',      # Auto-accept EULA
-        '/auto',            # Auto mode
-        '/norestart'        # Don't auto restart
+        '/quietinstall',    # Quiet installation mode
+        '/skipeula',        # Skip End User License Agreement
+        '/auto',            # Automatic mode
+        '/copylogs',        # Copy installation logs
+        '/migratedrivers',  # Migrate device drivers
+        '/showoobe',        # Show Out of Box Experience
+        '/telemetry',       # Enable telemetry
+        '/dynamicupdate'    # Enable dynamic updates
     )
     
     try {
-        Write-Host "Launching with visible progress window..." -ForegroundColor Gray
+        Write-Host "Launching with Installation Assistant switches: $($arguments -join ' ')" -ForegroundColor Gray
         
-        # Launch with visible window so you can see progress
+        # Launch with official switches and normal window
         $process = Start-Process -FilePath $AssistantPath -ArgumentList $arguments -PassThru -WindowStyle Normal
-        Write-Host "✓ Installation Assistant launched with visible progress (Process ID: $($process.Id))" -ForegroundColor Green
+        Write-Host "✓ Installation Assistant launched with official switches (Process ID: $($process.Id))" -ForegroundColor Green
         
-        # Give it time to load and check if license screen appears
-        Start-Sleep -Seconds 10
+        # Monitor the process
+        Start-Sleep -Seconds 5
         
         if (-not $process.HasExited) {
-            Write-Host "✓ Installation Assistant is running - monitoring for license screen..." -ForegroundColor Green
-            
-            # Check for license screen and auto-click if needed
-            for ($i = 0; $i -lt 6; $i++) {
-                try {
-                    # Simple keyboard automation to handle license
-                    Add-Type -AssemblyName System.Windows.Forms
-                    Write-Host "Sending auto-accept commands (attempt $($i + 1))..." -ForegroundColor Cyan
-                    
-                    # Multiple methods to ensure button gets clicked
-                    [System.Windows.Forms.SendKeys]::SendWait("{TAB}")
-                    Start-Sleep -Milliseconds 1000
-                    [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
-                    Start-Sleep -Milliseconds 1000
-                    [System.Windows.Forms.SendKeys]::SendWait(" ")
-                    Start-Sleep -Milliseconds 1000
-                    
-                    # Check if we're past the license screen
-                    if ($i -ge 3) {
-                        Write-Host "✓ License automation completed - Installation Assistant should be proceeding" -ForegroundColor Green
-                        break
-                    }
-                    
-                } catch {
-                    Write-Host "Automation attempt $($i + 1) failed, trying again..." -ForegroundColor Yellow
-                }
-                
-                Start-Sleep -Seconds 3
-            }
-            
-            Write-Host "✓ Installation Assistant running with visible progress window" -ForegroundColor Green
-            Write-Host "✓ You can now monitor the download and installation progress" -ForegroundColor Cyan
+            Write-Host "✓ Installation Assistant is running with proper switches" -ForegroundColor Green
+            Write-Host "✓ Using /quietinstall and /skipeula for automation" -ForegroundColor Cyan
+            Write-Host "✓ Process should handle license automatically" -ForegroundColor Green
             return $process
             
         } else {
-            Write-Host "Installation Assistant exited - trying alternative launch method..." -ForegroundColor Yellow
+            Write-Host "Installation Assistant exited quickly - trying alternative switches..." -ForegroundColor Yellow
             
-            # Try without parameters if first attempt failed
-            $altProcess = Start-Process -FilePath $AssistantPath -PassThru -WindowStyle Normal
-            Write-Host "✓ Alternative launch successful (Process ID: $($altProcess.Id))" -ForegroundColor Green
-            Write-Host "Note: You may need to manually click 'Accept and install' if license screen appears" -ForegroundColor Yellow
+            # Try with minimal switches if first attempt failed
+            $altArgs = @('/auto', '/skipeula', '/copylogs')
+            $altProcess = Start-Process -FilePath $AssistantPath -ArgumentList $altArgs -PassThru -WindowStyle Normal
+            Write-Host "✓ Alternative switches launched (Process ID: $($altProcess.Id))" -ForegroundColor Green
             return $altProcess
         }
         
     } catch {
-        Write-Host "Error launching Installation Assistant: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "Error launching with switches: $($_.Exception.Message)" -ForegroundColor Red
         
-        # Final fallback - basic launch
+        # Final fallback - basic switches
         try {
-            Write-Host "Trying basic launch method..." -ForegroundColor Yellow
-            $basicProcess = Start-Process -FilePath $AssistantPath -PassThru -WindowStyle Normal
-            Write-Host "✓ Basic launch successful (Process ID: $($basicProcess.Id))" -ForegroundColor Green
-            Write-Host "Note: Manual click on 'Accept and install' may be required" -ForegroundColor Yellow
+            Write-Host "Trying basic switches..." -ForegroundColor Yellow
+            $basicArgs = @('/auto')
+            $basicProcess = Start-Process -FilePath $AssistantPath -ArgumentList $basicArgs -PassThru -WindowStyle Normal
+            Write-Host "✓ Basic switches successful (Process ID: $($basicProcess.Id))" -ForegroundColor Green
             return $basicProcess
         } catch {
-            Write-Host "All launch attempts failed" -ForegroundColor Red
-            return $null
+            Write-Host "All switch attempts failed - trying without parameters" -ForegroundColor Red
+            try {
+                $noArgsProcess = Start-Process -FilePath $AssistantPath -PassThru -WindowStyle Normal
+                Write-Host "✓ No parameters launch successful (Process ID: $($noArgsProcess.Id))" -ForegroundColor Green
+                Write-Host "Note: Manual interaction may be required" -ForegroundColor Yellow
+                return $noArgsProcess
+            } catch {
+                Write-Host "All launch attempts failed" -ForegroundColor Red
+                return $null
+            }
         }
     }
 }
