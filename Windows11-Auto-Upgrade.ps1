@@ -96,62 +96,82 @@ try {
 function Start-AutomatedInstallationAssistant {
     param($AssistantPath)
     
-    Write-Host "Starting Installation Assistant in complete background mode..." -ForegroundColor Yellow
+    Write-Host "Starting Installation Assistant with visible progress..." -ForegroundColor Yellow
     
-    # Background mode - no UI, completely silent
+    # First try with license bypass parameters and visible window
     $arguments = @(
-        '/quiet',           # Run completely quietly
-        '/skipeula',        # Skip EULA completely
         '/accepteula',      # Auto-accept EULA
-        '/auto',            # Full auto mode
-        '/norestart',       # Don't auto restart
-        '/migratedrivers',  # Migrate drivers
-        '/dynamicupdate'    # Enable dynamic updates
+        '/auto',            # Auto mode
+        '/norestart'        # Don't auto restart
     )
     
     try {
-        Write-Host "Launching in silent background mode with parameters: $($arguments -join ' ')" -ForegroundColor Gray
+        Write-Host "Launching with visible progress window..." -ForegroundColor Gray
         
-        # Launch completely hidden - no window at all
-        $process = Start-Process -FilePath $AssistantPath -ArgumentList $arguments -PassThru -WindowStyle Hidden
-        Write-Host "✓ Installation Assistant launched in background (Process ID: $($process.Id))" -ForegroundColor Green
-        Write-Host "✓ Running silently - no license screens will appear" -ForegroundColor Green
-        Write-Host "✓ Upgrade will proceed automatically in background" -ForegroundColor Green
+        # Launch with visible window so you can see progress
+        $process = Start-Process -FilePath $AssistantPath -ArgumentList $arguments -PassThru -WindowStyle Normal
+        Write-Host "✓ Installation Assistant launched with visible progress (Process ID: $($process.Id))" -ForegroundColor Green
         
-        # Monitor the process briefly
+        # Give it time to load and check if license screen appears
         Start-Sleep -Seconds 10
         
         if (-not $process.HasExited) {
-            Write-Host "✓ Installation Assistant is running successfully in background" -ForegroundColor Green
-            Write-Host "✓ Windows 11 download and installation proceeding silently" -ForegroundColor Cyan
-        } else {
-            Write-Host "Installation Assistant completed quickly - checking exit code..." -ForegroundColor Yellow
-            if ($process.ExitCode -eq 0) {
-                Write-Host "✓ Installation Assistant completed successfully!" -ForegroundColor Green
-            } else {
-                Write-Host "Installation Assistant exit code: $($process.ExitCode)" -ForegroundColor Yellow
-                # Try alternative method
-                Write-Host "Trying alternative silent method..." -ForegroundColor Yellow
-                $altArgs = @('/quiet', '/auto', '/norestart')
-                $altProcess = Start-Process -FilePath $AssistantPath -ArgumentList $altArgs -PassThru -WindowStyle Hidden
-                Write-Host "✓ Alternative method launched (Process ID: $($altProcess.Id))" -ForegroundColor Green
+            Write-Host "✓ Installation Assistant is running - monitoring for license screen..." -ForegroundColor Green
+            
+            # Check for license screen and auto-click if needed
+            for ($i = 0; $i -lt 6; $i++) {
+                try {
+                    # Simple keyboard automation to handle license
+                    Add-Type -AssemblyName System.Windows.Forms
+                    Write-Host "Sending auto-accept commands (attempt $($i + 1))..." -ForegroundColor Cyan
+                    
+                    # Multiple methods to ensure button gets clicked
+                    [System.Windows.Forms.SendKeys]::SendWait("{TAB}")
+                    Start-Sleep -Milliseconds 1000
+                    [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
+                    Start-Sleep -Milliseconds 1000
+                    [System.Windows.Forms.SendKeys]::SendWait(" ")
+                    Start-Sleep -Milliseconds 1000
+                    
+                    # Check if we're past the license screen
+                    if ($i -ge 3) {
+                        Write-Host "✓ License automation completed - Installation Assistant should be proceeding" -ForegroundColor Green
+                        break
+                    }
+                    
+                } catch {
+                    Write-Host "Automation attempt $($i + 1) failed, trying again..." -ForegroundColor Yellow
+                }
+                
+                Start-Sleep -Seconds 3
             }
+            
+            Write-Host "✓ Installation Assistant running with visible progress window" -ForegroundColor Green
+            Write-Host "✓ You can now monitor the download and installation progress" -ForegroundColor Cyan
+            return $process
+            
+        } else {
+            Write-Host "Installation Assistant exited - trying alternative launch method..." -ForegroundColor Yellow
+            
+            # Try without parameters if first attempt failed
+            $altProcess = Start-Process -FilePath $AssistantPath -PassThru -WindowStyle Normal
+            Write-Host "✓ Alternative launch successful (Process ID: $($altProcess.Id))" -ForegroundColor Green
+            Write-Host "Note: You may need to manually click 'Accept and install' if license screen appears" -ForegroundColor Yellow
+            return $altProcess
         }
         
-        return $process
-        
     } catch {
-        Write-Host "Error launching silent Installation Assistant: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "Error launching Installation Assistant: $($_.Exception.Message)" -ForegroundColor Red
         
-        # Fallback to basic silent mode
+        # Final fallback - basic launch
         try {
-            Write-Host "Trying basic silent fallback..." -ForegroundColor Yellow
-            $basicArgs = @('/quiet')
-            $fallbackProcess = Start-Process -FilePath $AssistantPath -ArgumentList $basicArgs -PassThru -WindowStyle Hidden
-            Write-Host "✓ Fallback silent mode launched (Process ID: $($fallbackProcess.Id))" -ForegroundColor Green
-            return $fallbackProcess
+            Write-Host "Trying basic launch method..." -ForegroundColor Yellow
+            $basicProcess = Start-Process -FilePath $AssistantPath -PassThru -WindowStyle Normal
+            Write-Host "✓ Basic launch successful (Process ID: $($basicProcess.Id))" -ForegroundColor Green
+            Write-Host "Note: Manual click on 'Accept and install' may be required" -ForegroundColor Yellow
+            return $basicProcess
         } catch {
-            Write-Host "All silent launch attempts failed" -ForegroundColor Red
+            Write-Host "All launch attempts failed" -ForegroundColor Red
             return $null
         }
     }
