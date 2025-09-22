@@ -96,29 +96,37 @@ try {
 function Start-AutomatedInstallationAssistant {
     param($AssistantPath)
     
-    Write-Host "Starting Installation Assistant with simple working switches..." -ForegroundColor Yellow
+    Write-Host "Starting Installation Assistant with your exact switches..." -ForegroundColor Yellow
     
-    # Use the most reliable switch combination
+    # Get working directory for logs
+    $workingdir = Split-Path -Parent $AssistantPath
+    
+    # Use your exact switch combination
     $arguments = @(
+        '/Install',
+        '/MinimizeToTaskbar',
         '/QuietInstall',
-        '/SkipEULA'
+        '/SkipEULA',
+        '/copylogs',
+        $workingdir
     )
     
     try {
-        Write-Host "Launching with /QuietInstall /SkipEULA switches..." -ForegroundColor Cyan
+        Write-Host "Launching with /Install /MinimizeToTaskbar /QuietInstall /SkipEULA /copylogs..." -ForegroundColor Cyan
         $process = Start-Process -FilePath $AssistantPath -ArgumentList $arguments -PassThru -WindowStyle Normal
-        Write-Host "✓ Installation Assistant launched (Process ID: $($process.Id))" -ForegroundColor Green
+        Write-Host "✓ Installation Assistant launched with your switches (Process ID: $($process.Id))" -ForegroundColor Green
         
         # Monitor the process
         Start-Sleep -Seconds 8
         
         if (-not $process.HasExited) {
-            Write-Host "✓ Installation Assistant running successfully with switches" -ForegroundColor Green
-            Write-Host "✓ Using /QuietInstall /SkipEULA for automation" -ForegroundColor Cyan
-            Write-Host "✓ License should be skipped automatically" -ForegroundColor Green
+            Write-Host "✓ Installation Assistant running successfully with your switches" -ForegroundColor Green
+            Write-Host "✓ Using /Install /MinimizeToTaskbar /QuietInstall /SkipEULA" -ForegroundColor Cyan
+            Write-Host "✓ Logs will be copied to: $workingdir" -ForegroundColor Yellow
+            Write-Host "✓ Should minimize to taskbar and skip license automatically" -ForegroundColor Green
             return $process
         } else {
-            Write-Host "Switches caused exit - launching without switches..." -ForegroundColor Yellow
+            Write-Host "Your switches caused exit - launching without switches..." -ForegroundColor Yellow
             
             # Simple fallback
             $fallbackProcess = Start-Process -FilePath $AssistantPath -PassThru -WindowStyle Normal
@@ -128,7 +136,7 @@ function Start-AutomatedInstallationAssistant {
         }
         
     } catch {
-        Write-Host "Error with switches - trying without switches..." -ForegroundColor Yellow
+        Write-Host "Error with your switches - trying without switches..." -ForegroundColor Yellow
         
         # Fallback launch
         try {
