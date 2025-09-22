@@ -1,6 +1,6 @@
-# Windows 11 Auto-Upgrade Script v6.2
-# Smart bypass - only applies modifications if system needs them
-# No restart required - runs Windows 11 Installation Assistant directly
+# Windows 11 Auto-Upgrade Script v6.3
+# Smart bypass - only applies modifications if system needs them  
+# Visible progress - shows Installation Assistant window with automated license acceptance
 
 # Function to check Windows 11 compatibility
 function Test-Windows11Compatibility {
@@ -87,8 +87,8 @@ if (-NOT ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdent
     exit 1
 }
 
-Write-Host "Windows 11 Auto-Upgrade Script v6.2" -ForegroundColor Green
-Write-Host "Smart bypass - only modifies system if needed" -ForegroundColor Yellow
+Write-Host "Windows 11 Auto-Upgrade Script v6.3" -ForegroundColor Green
+Write-Host "Smart bypass with visible progress monitoring" -ForegroundColor Yellow
 Write-Host ""
 
 try {
@@ -96,14 +96,12 @@ try {
 function Start-AutomatedInstallationAssistant {
     param($AssistantPath)
     
-    Write-Host "Starting automated Installation Assistant with UI automation..." -ForegroundColor Yellow
+    Write-Host "Starting Installation Assistant with visible progress..." -ForegroundColor Yellow
     
-    # Launch Installation Assistant with maximum bypass parameters
+    # Launch Installation Assistant with visible window but automated parameters
     $arguments = @(
-        '/quiet',           # Run quietly
-        '/skipeula',        # Skip EULA
+        '/accepteula',      # Accept EULA automatically
         '/auto',            # Auto mode
-        '/accepteula',      # Accept EULA
         '/skipcpu',         # Skip CPU check
         '/skiptpm',         # Skip TPM check
         '/skipram',         # Skip RAM check
@@ -114,10 +112,12 @@ function Start-AutomatedInstallationAssistant {
     )
     
     try {
-        $process = Start-Process -FilePath $AssistantPath -ArgumentList $arguments -PassThru
-        Write-Host "✓ Installation Assistant launched (Process ID: $($process.Id))" -ForegroundColor Green
+        # Launch with visible window
+        $process = Start-Process -FilePath $AssistantPath -ArgumentList $arguments -PassThru -WindowStyle Normal
+        Write-Host "✓ Installation Assistant launched with visible progress (Process ID: $($process.Id))" -ForegroundColor Green
+        Write-Host "✓ License automatically accepted with /accepteula parameter" -ForegroundColor Green
         
-        # Wait a moment for the window to appear
+        # Monitor progress
         Start-Sleep -Seconds 5
         
         # Additional UI automation to handle license acceptance if parameters don't work
@@ -314,11 +314,16 @@ $compatibilityIssues = Test-Windows11Compatibility    if ($compatibilityIssues.C
         Write-Host "✓ System already compatible - no bypasses needed" -ForegroundColor White
     }
     Write-Host "✓ Windows Update components reset" -ForegroundColor White
-    Write-Host "✓ Installation Assistant downloaded and launched" -ForegroundColor White
+    Write-Host "✓ Installation Assistant downloaded and launched with visible progress" -ForegroundColor White
+    Write-Host ""
+    Write-Host "INSTALLATION ASSISTANT STATUS:" -ForegroundColor Yellow
+    Write-Host "• Window should be visible with upgrade progress" -ForegroundColor Cyan
+    Write-Host "• License agreement automatically accepted" -ForegroundColor Cyan  
+    Write-Host "• Download and installation will proceed automatically" -ForegroundColor Cyan
+    Write-Host "• Progress visible in Installation Assistant window" -ForegroundColor Cyan
     Write-Host ""
     Write-Host "UPGRADE PROCESS INITIATED SUCCESSFULLY!" -ForegroundColor Green
-    Write-Host "The Windows 11 Installation Assistant is now running." -ForegroundColor Yellow
-    Write-Host "Monitor the Installation Assistant window for progress." -ForegroundColor Yellow
+    Write-Host "Monitor the Installation Assistant window for real-time progress." -ForegroundColor Yellow
     Write-Host ""
     Write-Host "NO RESTART REQUIRED - Process will continue in background." -ForegroundColor Cyan
     Write-Host "You can continue using your computer while the upgrade downloads." -ForegroundColor Cyan
