@@ -261,38 +261,20 @@ function Start-InstallationAssistant {
         
         # Verify file exists and launch
         if (Test-Path $Path) {
-            Write-Log "Launching Installation Assistant with working parameters..." -Level INFO
+            Write-Log "Launching Installation Assistant with proven working switches..." -Level INFO
             
-            # Use simple, proven switches that don't cause exit
-            $arguments = @(
-                '/SkipEULA',
-                '/Auto'
-            )
+            # Use only the most reliable switch combination that works
+            $arguments = @('/SkipEULA')
             
             $process = Start-Process -FilePath $Path -ArgumentList $arguments -PassThru -WindowStyle Normal
             Start-Sleep -Seconds 8
             
             if ($process -and -not $process.HasExited) {
-                Write-Log "✓ Installation Assistant launched successfully (PID: $($process.Id))" -Level SUCCESS
-                Write-Log "Using /SkipEULA /Auto for reliable automation" -Level INFO
+                Write-Log "✓ Installation Assistant launched successfully with /SkipEULA (PID: $($process.Id))" -Level SUCCESS
+                Write-Log "License screen will be skipped automatically" -Level INFO
                 return $process
             } else {
-                # Try even simpler approach
-                Write-Log "Trying simpler switches..." -Level WARNING
-                $simpleArgs = @('/SkipEULA')
-                $simpleProcess = Start-Process -FilePath $Path -ArgumentList $simpleArgs -PassThru -WindowStyle Normal
-                Start-Sleep -Seconds 8
-                
-                if ($simpleProcess -and -not $simpleProcess.HasExited) {
-                    Write-Log "✓ Installation Assistant launched with /SkipEULA (PID: $($simpleProcess.Id))" -Level SUCCESS
-                    return $simpleProcess
-                } else {
-                    # Final fallback to no switches
-                    Write-Log "Using no switches - most reliable method..." -Level WARNING
-                    $fallbackProcess = Start-Process -FilePath $Path -PassThru -WindowStyle Normal
-                    Write-Log "✓ Installation Assistant launched (no switches) - manual license acceptance required" -Level SUCCESS
-                    return $fallbackProcess
-                }
+                throw "Installation Assistant failed to launch properly with /SkipEULA switch"
             }
         } else {
             throw "Installation Assistant file not found after download"
