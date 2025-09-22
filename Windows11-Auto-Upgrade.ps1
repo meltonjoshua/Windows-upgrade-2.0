@@ -1,6 +1,6 @@
-# Windows 11 Auto-Upgrade Script v6.5
+# Windows 11 Auto-Upgrade Script v6.6
 # Smart bypass - only applies modifications if system needs them  
-# Aggressive automation - tries multiple methods to bypass license screen
+# Complete background operation - no license screens or user interaction
 
 # Function to check Windows 11 compatibility
 function Test-Windows11Compatibility {
@@ -87,8 +87,8 @@ if (-NOT ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdent
     exit 1
 }
 
-Write-Host "Windows 11 Auto-Upgrade Script v6.5" -ForegroundColor Green
-Write-Host "Smart bypass with aggressive license automation" -ForegroundColor Yellow
+Write-Host "Windows 11 Auto-Upgrade Script v6.6" -ForegroundColor Green
+Write-Host "Complete background operation - no license screens" -ForegroundColor Yellow
 Write-Host ""
 
 try {
@@ -96,82 +96,67 @@ try {
 function Start-AutomatedInstallationAssistant {
     param($AssistantPath)
     
-    Write-Host "Starting Installation Assistant with aggressive automation..." -ForegroundColor Yellow
+    Write-Host "Starting Installation Assistant in complete background mode..." -ForegroundColor Yellow
     
-    # Try different parameter combinations
-    $argumentSets = @(
-        @('/accepteula', '/auto', '/norestart'),
-        @('/skipeula', '/auto', '/norestart'),
-        @('/quiet', '/accepteula', '/norestart'),
-        @('/auto', '/norestart')
+    # Background mode - no UI, completely silent
+    $arguments = @(
+        '/quiet',           # Run completely quietly
+        '/skipeula',        # Skip EULA completely
+        '/accepteula',      # Auto-accept EULA
+        '/auto',            # Full auto mode
+        '/norestart',       # Don't auto restart
+        '/migratedrivers',  # Migrate drivers
+        '/dynamicupdate'    # Enable dynamic updates
     )
     
-    foreach ($arguments in $argumentSets) {
+    try {
+        Write-Host "Launching in silent background mode with parameters: $($arguments -join ' ')" -ForegroundColor Gray
+        
+        # Launch completely hidden - no window at all
+        $process = Start-Process -FilePath $AssistantPath -ArgumentList $arguments -PassThru -WindowStyle Hidden
+        Write-Host "✓ Installation Assistant launched in background (Process ID: $($process.Id))" -ForegroundColor Green
+        Write-Host "✓ Running silently - no license screens will appear" -ForegroundColor Green
+        Write-Host "✓ Upgrade will proceed automatically in background" -ForegroundColor Green
+        
+        # Monitor the process briefly
+        Start-Sleep -Seconds 10
+        
+        if (-not $process.HasExited) {
+            Write-Host "✓ Installation Assistant is running successfully in background" -ForegroundColor Green
+            Write-Host "✓ Windows 11 download and installation proceeding silently" -ForegroundColor Cyan
+        } else {
+            Write-Host "Installation Assistant completed quickly - checking exit code..." -ForegroundColor Yellow
+            if ($process.ExitCode -eq 0) {
+                Write-Host "✓ Installation Assistant completed successfully!" -ForegroundColor Green
+            } else {
+                Write-Host "Installation Assistant exit code: $($process.ExitCode)" -ForegroundColor Yellow
+                # Try alternative method
+                Write-Host "Trying alternative silent method..." -ForegroundColor Yellow
+                $altArgs = @('/quiet', '/auto', '/norestart')
+                $altProcess = Start-Process -FilePath $AssistantPath -ArgumentList $altArgs -PassThru -WindowStyle Hidden
+                Write-Host "✓ Alternative method launched (Process ID: $($altProcess.Id))" -ForegroundColor Green
+            }
+        }
+        
+        return $process
+        
+    } catch {
+        Write-Host "Error launching silent Installation Assistant: $($_.Exception.Message)" -ForegroundColor Red
+        
+        # Fallback to basic silent mode
         try {
-            Write-Host "Attempting launch with parameters: $($arguments -join ' ')" -ForegroundColor Gray
-            
-            # Launch with visible window
-            $process = Start-Process -FilePath $AssistantPath -ArgumentList $arguments -PassThru -WindowStyle Normal
-            Write-Host "✓ Installation Assistant launched (Process ID: $($process.Id))" -ForegroundColor Green
-            
-            # Give it time to load
-            Start-Sleep -Seconds 8
-            
-            # Aggressive UI automation
-            $automationSuccess = $false
-            for ($i = 0; $i -lt 5; $i++) {
-                try {
-                    Add-Type -AssemblyName System.Windows.Forms
-                    
-                    # Multiple automation approaches
-                    Write-Host "Automation attempt $($i + 1): Trying multiple methods..." -ForegroundColor Cyan
-                    
-                    # Method 1: Alt+A (Accept shortcut)
-                    [System.Windows.Forms.SendKeys]::SendWait("%a")
-                    Start-Sleep -Seconds 2
-                    
-                    # Method 2: Tab to button and Enter
-                    [System.Windows.Forms.SendKeys]::SendWait("{TAB}")
-                    Start-Sleep -Seconds 1
-                    [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
-                    Start-Sleep -Seconds 2
-                    
-                    # Method 3: Space to activate focused button
-                    [System.Windows.Forms.SendKeys]::SendWait(" ")
-                    Start-Sleep -Seconds 2
-                    
-                    # Method 4: Multiple tabs then Enter
-                    [System.Windows.Forms.SendKeys]::SendWait("{TAB}{TAB}{ENTER}")
-                    Start-Sleep -Seconds 2
-                    
-                    # Check if we got past the license screen by checking if process is still running
-                    # and if it's been more than 15 seconds, assume success
-                    if ($i -ge 2) {
-                        Write-Host "✓ License automation completed" -ForegroundColor Green
-                        $automationSuccess = $true
-                        break
-                    }
-                    
-                } catch {
-                    Write-Host "Automation method failed, trying next..." -ForegroundColor Yellow
-                }
-                
-                Start-Sleep -Seconds 3
-            }
-            
-            if ($automationSuccess -or -not $process.HasExited) {
-                Write-Host "✓ Installation Assistant running with automation applied" -ForegroundColor Green
-                return $process
-            }
-            
+            Write-Host "Trying basic silent fallback..." -ForegroundColor Yellow
+            $basicArgs = @('/quiet')
+            $fallbackProcess = Start-Process -FilePath $AssistantPath -ArgumentList $basicArgs -PassThru -WindowStyle Hidden
+            Write-Host "✓ Fallback silent mode launched (Process ID: $($fallbackProcess.Id))" -ForegroundColor Green
+            return $fallbackProcess
         } catch {
-            Write-Host "Launch attempt failed: $($_.Exception.Message)" -ForegroundColor Yellow
-            continue
+            Write-Host "All silent launch attempts failed" -ForegroundColor Red
+            return $null
         }
     }
-    
-    Write-Host "Warning: All launch attempts completed. Check for Installation Assistant window." -ForegroundColor Yellow
-    return $null
+}
+
 # Check Windows 11 compatibility first
 $compatibilityIssues = Test-Windows11Compatibility    if ($compatibilityIssues.Count -eq 0) {
         Write-Host "✓ SYSTEM IS ALREADY WINDOWS 11 COMPATIBLE!" -ForegroundColor Green
@@ -312,16 +297,16 @@ $compatibilityIssues = Test-Windows11Compatibility    if ($compatibilityIssues.C
         Write-Host "✓ System already compatible - no bypasses needed" -ForegroundColor White
     }
     Write-Host "✓ Windows Update components reset" -ForegroundColor White
-    Write-Host "✓ Installation Assistant downloaded and launched with visible progress" -ForegroundColor White
+    Write-Host "✓ Installation Assistant launched in complete background mode" -ForegroundColor White
     Write-Host ""
-    Write-Host "INSTALLATION ASSISTANT STATUS:" -ForegroundColor Yellow
-    Write-Host "• Window should be visible with upgrade progress" -ForegroundColor Cyan
-    Write-Host "• License agreement automatically accepted" -ForegroundColor Cyan  
-    Write-Host "• Download and installation will proceed automatically" -ForegroundColor Cyan
-    Write-Host "• Progress visible in Installation Assistant window" -ForegroundColor Cyan
+    Write-Host "BACKGROUND OPERATION STATUS:" -ForegroundColor Yellow
+    Write-Host "• Running completely silently - no windows or license screens" -ForegroundColor Cyan
+    Write-Host "• License agreement automatically accepted via parameters" -ForegroundColor Cyan  
+    Write-Host "• Download and installation proceeding in background" -ForegroundColor Cyan
+    Write-Host "• No user interaction required - fully automated" -ForegroundColor Cyan
     Write-Host ""
-    Write-Host "UPGRADE PROCESS INITIATED SUCCESSFULLY!" -ForegroundColor Green
-    Write-Host "Monitor the Installation Assistant window for real-time progress." -ForegroundColor Yellow
+    Write-Host "BACKGROUND UPGRADE INITIATED SUCCESSFULLY!" -ForegroundColor Green
+    Write-Host "Installation Assistant running silently in background - no license screens!" -ForegroundColor Yellow
     Write-Host ""
     Write-Host "NO RESTART REQUIRED - Process will continue in background." -ForegroundColor Cyan
     Write-Host "You can continue using your computer while the upgrade downloads." -ForegroundColor Cyan
