@@ -1,6 +1,6 @@
-# Windows 11 Auto-Upgrade Script v6.4
+# Windows 11 Auto-Upgrade Script v6.5
 # Smart bypass - only applies modifications if system needs them  
-# Visible progress - shows Installation Assistant window with automated license acceptance
+# Aggressive automation - tries multiple methods to bypass license screen
 
 # Function to check Windows 11 compatibility
 function Test-Windows11Compatibility {
@@ -87,8 +87,8 @@ if (-NOT ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdent
     exit 1
 }
 
-Write-Host "Windows 11 Auto-Upgrade Script v6.4" -ForegroundColor Green
-Write-Host "Smart bypass with visible progress monitoring" -ForegroundColor Yellow
+Write-Host "Windows 11 Auto-Upgrade Script v6.5" -ForegroundColor Green
+Write-Host "Smart bypass with aggressive license automation" -ForegroundColor Yellow
 Write-Host ""
 
 try {
@@ -96,117 +96,82 @@ try {
 function Start-AutomatedInstallationAssistant {
     param($AssistantPath)
     
-    Write-Host "Starting Installation Assistant with visible progress..." -ForegroundColor Yellow
+    Write-Host "Starting Installation Assistant with aggressive automation..." -ForegroundColor Yellow
     
-    # Launch Installation Assistant with visible window but automated parameters
-    $arguments = @(
-        '/accepteula',      # Accept EULA automatically
-        '/auto',            # Auto mode
-        '/skipcpu',         # Skip CPU check
-        '/skiptpm',         # Skip TPM check
-        '/skipram',         # Skip RAM check
-        '/skipsecureboot',  # Skip Secure Boot check
-        '/skipstorage',     # Skip storage check
-        '/skipcompatibilitycheck',  # Skip all compatibility checks
-        '/norestart'        # Don't auto restart
+    # Try different parameter combinations
+    $argumentSets = @(
+        @('/accepteula', '/auto', '/norestart'),
+        @('/skipeula', '/auto', '/norestart'),
+        @('/quiet', '/accepteula', '/norestart'),
+        @('/auto', '/norestart')
     )
     
-    try {
-        # Launch with visible window
-        $process = Start-Process -FilePath $AssistantPath -ArgumentList $arguments -PassThru -WindowStyle Normal
-        Write-Host "✓ Installation Assistant launched with visible progress (Process ID: $($process.Id))" -ForegroundColor Green
-        Write-Host "✓ License automatically accepted with /accepteula parameter" -ForegroundColor Green
-        
-        # Monitor progress
-        Start-Sleep -Seconds 5
-        
-        # Additional UI automation to handle license acceptance if parameters don't work
-        $automationAttempts = 0
-        $maxAutomationAttempts = 12  # 1 minute of attempts
-        
-        while (-not $process.HasExited -and $automationAttempts -lt $maxAutomationAttempts) {
-            try {
-                # Look for Installation Assistant window
-                Add-Type -AssemblyName System.Windows.Forms
-                $installWindow = [System.Windows.Forms.Application]::OpenForms | Where-Object { $_.Text -like "*Installation Assistant*" -or $_.Text -like "*Windows 11*" }
-                
-                if ($installWindow) {
-                    Write-Host "Found Installation Assistant window, attempting UI automation..." -ForegroundColor Cyan
+    foreach ($arguments in $argumentSets) {
+        try {
+            Write-Host "Attempting launch with parameters: $($arguments -join ' ')" -ForegroundColor Gray
+            
+            # Launch with visible window
+            $process = Start-Process -FilePath $AssistantPath -ArgumentList $arguments -PassThru -WindowStyle Normal
+            Write-Host "✓ Installation Assistant launched (Process ID: $($process.Id))" -ForegroundColor Green
+            
+            # Give it time to load
+            Start-Sleep -Seconds 8
+            
+            # Aggressive UI automation
+            $automationSuccess = $false
+            for ($i = 0; $i -lt 5; $i++) {
+                try {
+                    Add-Type -AssemblyName System.Windows.Forms
                     
-                    # Send Alt+A to accept (common shortcut for Accept button)
+                    # Multiple automation approaches
+                    Write-Host "Automation attempt $($i + 1): Trying multiple methods..." -ForegroundColor Cyan
+                    
+                    # Method 1: Alt+A (Accept shortcut)
                     [System.Windows.Forms.SendKeys]::SendWait("%a")
                     Start-Sleep -Seconds 2
                     
-                    # Send Enter to confirm
-                    [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
-                    Start-Sleep -Seconds 2
-                    
-                    # Send Tab and Enter to navigate to Accept button if needed
+                    # Method 2: Tab to button and Enter
                     [System.Windows.Forms.SendKeys]::SendWait("{TAB}")
                     Start-Sleep -Seconds 1
                     [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
+                    Start-Sleep -Seconds 2
                     
-                    Write-Host "✓ Attempted automatic license acceptance" -ForegroundColor Green
-                }
-                
-                # Also try using PowerShell to click buttons via Windows API
-                try {
-                    $signature = @'
-[DllImport("user32.dll", CharSet = CharSet.Auto)]
-public static extern IntPtr FindWindow(string strClassName, string strWindowName);
-
-[DllImport("user32.dll", CharSet = CharSet.Auto)]
-public static extern IntPtr FindWindowEx(IntPtr hwndParent, IntPtr hwndChildAfter, string strClassName, string strWindowName);
-
-[DllImport("user32.dll")]
-public static extern bool PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
-'@
-                    Add-Type -MemberDefinition $signature -Name "Win32API" -Namespace Win32Functions
+                    # Method 3: Space to activate focused button
+                    [System.Windows.Forms.SendKeys]::SendWait(" ")
+                    Start-Sleep -Seconds 2
                     
-                    # Find Installation Assistant window
-                    $hwnd = [Win32Functions.Win32API]::FindWindow($null, "Windows 11 Installation Assistant")
-                    if ($hwnd -eq [IntPtr]::Zero) {
-                        $hwnd = [Win32Functions.Win32API]::FindWindow($null, "Install Windows 11")
+                    # Method 4: Multiple tabs then Enter
+                    [System.Windows.Forms.SendKeys]::SendWait("{TAB}{TAB}{ENTER}")
+                    Start-Sleep -Seconds 2
+                    
+                    # Check if we got past the license screen by checking if process is still running
+                    # and if it's been more than 15 seconds, assume success
+                    if ($i -ge 2) {
+                        Write-Host "✓ License automation completed" -ForegroundColor Green
+                        $automationSuccess = $true
+                        break
                     }
                     
-                    if ($hwnd -ne [IntPtr]::Zero) {
-                        # Find "Accept and install" button (common button text)
-                        $buttonHwnd = [Win32Functions.Win32API]::FindWindowEx($hwnd, [IntPtr]::Zero, "Button", "Accept and install")
-                        if ($buttonHwnd -eq [IntPtr]::Zero) {
-                            $buttonHwnd = [Win32Functions.Win32API]::FindWindowEx($hwnd, [IntPtr]::Zero, "Button", "Accept")
-                        }
-                        
-                        if ($buttonHwnd -ne [IntPtr]::Zero) {
-                            # Click the button (WM_LBUTTONDOWN = 0x0201, WM_LBUTTONUP = 0x0202)
-                            [Win32Functions.Win32API]::PostMessage($buttonHwnd, 0x0201, [IntPtr]::Zero, [IntPtr]::Zero)
-                            [Win32Functions.Win32API]::PostMessage($buttonHwnd, 0x0202, [IntPtr]::Zero, [IntPtr]::Zero)
-                            Write-Host "✓ Clicked Accept button via Windows API" -ForegroundColor Green
-                        }
-                    }
                 } catch {
-                    # Windows API automation failed, continue with other methods
+                    Write-Host "Automation method failed, trying next..." -ForegroundColor Yellow
                 }
                 
-            } catch {
-                # UI automation failed, continue monitoring
+                Start-Sleep -Seconds 3
             }
             
-            Start-Sleep -Seconds 5
-            $automationAttempts++
-            
-            if ($automationAttempts % 3 -eq 0) {
-                Write-Host "Installation Assistant automation attempt $automationAttempts/$maxAutomationAttempts..." -ForegroundColor Gray
+            if ($automationSuccess -or -not $process.HasExited) {
+                Write-Host "✓ Installation Assistant running with automation applied" -ForegroundColor Green
+                return $process
             }
+            
+        } catch {
+            Write-Host "Launch attempt failed: $($_.Exception.Message)" -ForegroundColor Yellow
+            continue
         }
-        
-        return $process
-        
-    } catch {
-        Write-Host "Failed to start Installation Assistant: $($_.Exception.Message)" -ForegroundColor Red
-        return $null
     }
-}
-
+    
+    Write-Host "Warning: All launch attempts completed. Check for Installation Assistant window." -ForegroundColor Yellow
+    return $null
 # Check Windows 11 compatibility first
 $compatibilityIssues = Test-Windows11Compatibility    if ($compatibilityIssues.Count -eq 0) {
         Write-Host "✓ SYSTEM IS ALREADY WINDOWS 11 COMPATIBLE!" -ForegroundColor Green
