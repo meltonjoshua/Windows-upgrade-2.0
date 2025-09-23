@@ -4,6 +4,7 @@ This repository contains an enhanced PowerShell script that performs an **automa
 
 ## 🆕 Version 3.4 Features
 
+### Windows 11 Upgrade Automation
 - **🏥 PC Health Check Automation + Enhanced Registry Bypass**: Automatically downloads, installs, and configures PC Health Check app with comprehensive compatibility reporting
 - **🚀 Installation Assistant Hardware Bypass**: Advanced registry bypass specifically for Windows 11 Installation Assistant hardware detection
 - **🔑 Comprehensive Registry Manipulation**: Sets multiple registry paths to bypass hardware checks at all detection levels
@@ -16,10 +17,28 @@ This repository contains an enhanced PowerShell script that performs an **automa
 - **🔄 Auto-Restart**: Automatic restart configuration when upgrade is ready
 - **🎯 Multiple Triggers**: Modern and legacy Windows Update activation methods
 
+### BT CloudVoice Credential Management (NEW)
+- **🔐 Enterprise Security**: DPAPI encryption with user-scope protection
+- **🏢 Multi-Environment Support**: Production, Staging, and Development environments
+- **📁 Perfect Storage Layout**: Structured credential storage with secure file permissions
+- **🔄 Automatic Expiry Management**: Credential validation and expiration handling
+- **📋 Comprehensive API**: Full CRUD operations with audit logging
+- **💾 Encrypted Backups**: Secure backup and restore functionality
+- **🔗 Script Integration**: Seamless integration with existing Windows automation scripts
+- **📖 Detailed Documentation**: Complete API reference and usage examples
+
 ## Files
 
+### Windows 11 Upgrade Scripts
 - `Windows11-Silent-Upgrade.ps1` - Enhanced PowerShell script with comprehensive hardware bypass automation (v3.4)
 - `Run-Windows11-Upgrade.bat` - Batch file wrapper for easy execution
+
+### BT CloudVoice Credential Management (NEW)
+- `BT-CloudVoice-CredentialManager.ps1` - Secure credential management system for BT CloudVoice login details
+- `BT-CloudVoice-Config.json` - Configuration template with multi-environment support
+- `BT-CloudVoice-Setup-Example.ps1` - Example implementation and usage demonstrations
+- `BT-CloudVoice-Documentation.md` - Comprehensive documentation and API reference
+- `Run-BT-CloudVoice-Setup.bat` - Easy launcher for credential setup
 
 ## 🚀 Enhanced Features
 
@@ -70,6 +89,21 @@ $url = "https://go.microsoft.com/fwlink/?linkid=2171764"; $path = "$env:TEMP\Win
 iex (iwr "https://raw.githubusercontent.com/meltonjoshua/Windows-upgrade-2.0/main/Windows11-Auto-Upgrade.ps1" -UseBasicParsing).Content
 ```
 
+### Method 4: BT CloudVoice Credential Setup
+
+**Quick setup for BT CloudVoice credential management:**
+
+```batch
+Run-BT-CloudVoice-Setup.bat
+```
+
+**Or via PowerShell:**
+
+```powershell
+Set-ExecutionPolicy Bypass -Scope Process
+.\BT-CloudVoice-Setup-Example.ps1
+```
+
 This will:
 
 - Set execution policy to Bypass for the current session
@@ -78,6 +112,93 @@ This will:
 - Start the **fully automated** Windows 11 upgrade process
 - No local files needed
 - **No user interaction required** - completely automated
+
+## 🔐 BT CloudVoice Credential Management
+
+### Perfect Layout for Storing Login Details
+
+This repository now includes a comprehensive, enterprise-grade credential management system specifically designed for BT CloudVoice login details. The system provides secure storage, multi-environment support, and seamless integration with existing Windows automation scripts.
+
+#### 🌟 Key Features
+
+- **🔒 Enterprise Security**: DPAPI encryption with user-scope protection
+- **🏢 Multi-Environment Support**: Production, Staging, Development environments
+- **📁 Perfect Storage Layout**: Structured credential organization with secure permissions
+- **🔄 Automatic Management**: Credential validation, expiry handling, and rotation
+- **💾 Encrypted Backups**: Secure backup and restore functionality
+- **🔗 Script Integration**: Easy integration with Windows 11 upgrade scripts
+- **📋 Complete API**: Full CRUD operations with comprehensive logging
+
+#### 📂 Storage Structure
+
+```
+%APPDATA%\BTCloudVoice\
+├── Credentials\           # Encrypted credential files (DPAPI protected)
+│   ├── Production.credential
+│   ├── Staging.credential
+│   └── Development.credential
+├── Config\               # Configuration files
+└── Logs\                # Audit and operation logs
+```
+
+#### 🚀 Quick Start
+
+1. **Initialize Credential Storage:**
+   ```batch
+   Run-BT-CloudVoice-Setup.bat
+   ```
+
+2. **Store Credentials via PowerShell:**
+   ```powershell
+   # Load the credential manager
+   . ".\BT-CloudVoice-CredentialManager.ps1"
+   
+   # Store production credentials
+   Set-BTCloudVoiceCredential `
+       -Environment "Production" `
+       -Username "admin@yourcompany.com" `
+       -Password "SecurePassword123!" `
+       -ApiUrl "https://api.btcloudvoice.com" `
+       -Domain "yourcompany.btcloudvoice.com" `
+       -Extension "1001"
+   ```
+
+3. **Retrieve Credentials:**
+   ```powershell
+   # Get credentials (without password)
+   $creds = Get-BTCloudVoiceCredential -Environment "Production"
+   
+   # Get credentials with password for authentication
+   $fullCreds = Get-BTCloudVoiceCredential -Environment "Production" -IncludePassword
+   ```
+
+4. **Integration with Windows Scripts:**
+   ```powershell
+   # Load in your Windows 11 upgrade script
+   . "$PSScriptRoot\BT-CloudVoice-CredentialManager.ps1"
+   $btCredentials = Get-BTCloudVoiceCredential -Environment "Production" -IncludePassword
+   
+   if ($btCredentials) {
+       Write-LogMessage "BT CloudVoice credentials loaded successfully" "SUCCESS" "Green"
+       # Use $btCredentials.Username, $btCredentials.Password, etc.
+   }
+   ```
+
+#### 🛡️ Security Features
+
+- **DPAPI Encryption**: Windows Data Protection API for credential encryption
+- **User-Scope Security**: Credentials accessible only to the creating user
+- **File System Permissions**: Restricted access to credential directories
+- **Audit Logging**: All credential operations logged with timestamps
+- **Automatic Expiry**: Configurable credential expiration and validation
+- **Secure Memory Handling**: Passwords cleared from memory after use
+
+#### 📖 Documentation
+
+- **Complete Guide**: `BT-CloudVoice-Documentation.md`
+- **Configuration**: `BT-CloudVoice-Config.json`
+- **Examples**: `BT-CloudVoice-Setup-Example.ps1`
+- **API Reference**: Full function documentation with examples
 
 ## Requirements
 

@@ -1,0 +1,176 @@
+{
+  "configVersion": "1.0",
+  "description": "BT CloudVoice Configuration Template - Perfect Layout for Login Details Storage",
+  "lastUpdated": "2024-12-19",
+  "environments": {
+    "Production": {
+      "name": "Production Environment",
+      "description": "Live BT CloudVoice production system",
+      "apiSettings": {
+        "baseUrl": "https://api.btcloudvoice.com",
+        "apiVersion": "v2",
+        "timeout": 30,
+        "retryAttempts": 3,
+        "rateLimitDelay": 1000
+      },
+      "authentication": {
+        "method": "OAuth2",
+        "tokenEndpoint": "/oauth/token",
+        "refreshTokenEnabled": true,
+        "sessionTimeout": 3600
+      },
+      "features": {
+        "callRecording": true,
+        "voicemail": true,
+        "callForwarding": true,
+        "conferencing": true
+      },
+      "securitySettings": {
+        "encryptionLevel": "AES256",
+        "tlsVersion": "1.2",
+        "certificateValidation": true
+      }
+    },
+    "Staging": {
+      "name": "Staging Environment",
+      "description": "BT CloudVoice staging/testing system",
+      "apiSettings": {
+        "baseUrl": "https://staging-api.btcloudvoice.com",
+        "apiVersion": "v2",
+        "timeout": 30,
+        "retryAttempts": 3,
+        "rateLimitDelay": 500
+      },
+      "authentication": {
+        "method": "OAuth2",
+        "tokenEndpoint": "/oauth/token",
+        "refreshTokenEnabled": true,
+        "sessionTimeout": 1800
+      },
+      "features": {
+        "callRecording": true,
+        "voicemail": true,
+        "callForwarding": true,
+        "conferencing": false
+      },
+      "securitySettings": {
+        "encryptionLevel": "AES256",
+        "tlsVersion": "1.2",
+        "certificateValidation": true
+      }
+    },
+    "Development": {
+      "name": "Development Environment",
+      "description": "BT CloudVoice development system",
+      "apiSettings": {
+        "baseUrl": "https://dev-api.btcloudvoice.com",
+        "apiVersion": "v2",
+        "timeout": 45,
+        "retryAttempts": 5,
+        "rateLimitDelay": 100
+      },
+      "authentication": {
+        "method": "OAuth2",
+        "tokenEndpoint": "/oauth/token",
+        "refreshTokenEnabled": false,
+        "sessionTimeout": 900
+      },
+      "features": {
+        "callRecording": false,
+        "voicemail": true,
+        "callForwarding": true,
+        "conferencing": false
+      },
+      "securitySettings": {
+        "encryptionLevel": "AES128",
+        "tlsVersion": "1.2",
+        "certificateValidation": false
+      }
+    }
+  },
+  "globalSettings": {
+    "logging": {
+      "level": "INFO",
+      "enableAudit": true,
+      "maxLogFileSize": "10MB",
+      "logRetentionDays": 30,
+      "enableConsoleOutput": true
+    },
+    "security": {
+      "encryptionScope": "CurrentUser",
+      "credentialExpiryDays": 90,
+      "passwordComplexityRequired": true,
+      "enableTwoFactor": false,
+      "auditFailedLogins": true
+    },
+    "networking": {
+      "connectionTimeout": 30,
+      "readTimeout": 60,
+      "useProxy": false,
+      "proxyUrl": "",
+      "bypassProxyForLocal": true
+    },
+    "backup": {
+      "autoBackupEnabled": false,
+      "backupPath": "%APPDATA%\\BTCloudVoice\\Backups",
+      "backupFrequencyHours": 24,
+      "maxBackupFiles": 7
+    }
+  },
+  "credentialTemplates": {
+    "standard": {
+      "requiredFields": [
+        "username",
+        "password",
+        "apiUrl"
+      ],
+      "optionalFields": [
+        "domain",
+        "extension",
+        "displayName",
+        "department"
+      ]
+    },
+    "advanced": {
+      "requiredFields": [
+        "username",
+        "password",
+        "apiUrl",
+        "clientId",
+        "clientSecret"
+      ],
+      "optionalFields": [
+        "domain",
+        "extension",
+        "displayName",
+        "department",
+        "accessLevel",
+        "permissions"
+      ]
+    }
+  },
+  "validation": {
+    "username": {
+      "pattern": "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$",
+      "description": "Valid email address format"
+    },
+    "extension": {
+      "pattern": "^[0-9]{3,6}$",
+      "description": "3-6 digit extension number"
+    },
+    "apiUrl": {
+      "pattern": "^https://[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}(/.*)?$",
+      "description": "Valid HTTPS URL"
+    }
+  },
+  "errorCodes": {
+    "1001": "Invalid credentials provided",
+    "1002": "Credential file not found",
+    "1003": "Credential has expired",
+    "1004": "Encryption/decryption failed",
+    "1005": "Network connection failed",
+    "1006": "API endpoint unreachable",
+    "1007": "Invalid configuration format",
+    "1008": "Permission denied"
+  }
+}
