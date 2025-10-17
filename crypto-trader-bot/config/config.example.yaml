@@ -1,0 +1,279 @@
+# Crypto Trading Bot Configuration
+# This is an example configuration file. Copy to config.yaml and customize.
+
+# Bot Configuration
+bot:
+  name: "Crypto Trading Bot"
+  version: "0.1.0"
+  mode: "paper"  # Options: paper, live
+  timezone: "UTC"
+  log_level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+
+# Exchanges Configuration
+exchanges:
+  binance:
+    enabled: true
+    api_key: "${BINANCE_API_KEY}"
+    api_secret: "${BINANCE_API_SECRET}"
+    testnet: true  # Use testnet for development
+    rate_limit: 1200  # Requests per minute
+    
+  coinbase:
+    enabled: false
+    api_key: "${COINBASE_API_KEY}"
+    api_secret: "${COINBASE_API_SECRET}"
+    passphrase: "${COINBASE_PASSPHRASE}"
+    sandbox: true
+    
+  kraken:
+    enabled: false
+    api_key: "${KRAKEN_API_KEY}"
+    api_secret: "${KRAKEN_API_SECRET}"
+
+# Database Configuration
+database:
+  postgres:
+    host: "localhost"
+    port: 5432
+    database: "crypto_bot"
+    user: "${POSTGRES_USER}"
+    password: "${POSTGRES_PASSWORD}"
+    pool_size: 20
+    
+  influxdb:
+    host: "localhost"
+    port: 8086
+    database: "market_data"
+    token: "${INFLUXDB_TOKEN}"
+    org: "crypto_bot"
+    
+  redis:
+    host: "localhost"
+    port: 6379
+    db: 0
+    password: "${REDIS_PASSWORD}"
+    
+  mongodb:
+    host: "localhost"
+    port: 27017
+    database: "crypto_bot_config"
+    user: "${MONGO_USER}"
+    password: "${MONGO_PASSWORD}"
+
+# Trading Pairs
+trading_pairs:
+  - symbol: "BTC/USDT"
+    exchange: "binance"
+    enabled: true
+    
+  - symbol: "ETH/USDT"
+    exchange: "binance"
+    enabled: true
+    
+  - symbol: "SOL/USDT"
+    exchange: "binance"
+    enabled: false
+
+# Strategies Configuration
+strategies:
+  - name: "MA Crossover"
+    type: "trend_following"
+    enabled: true
+    allocation: 0.3  # 30% of capital
+    config_file: "strategies/ma_crossover.yaml"
+    pairs: ["BTC/USDT", "ETH/USDT"]
+    
+  - name: "RSI Mean Reversion"
+    type: "mean_reversion"
+    enabled: true
+    allocation: 0.2
+    config_file: "strategies/rsi_reversion.yaml"
+    pairs: ["BTC/USDT"]
+    
+  - name: "Grid Trading"
+    type: "grid"
+    enabled: false
+    allocation: 0.2
+    config_file: "strategies/grid_trading.yaml"
+    pairs: ["ETH/USDT"]
+    
+  - name: "DCA Strategy"
+    type: "dca"
+    enabled: false
+    allocation: 0.3
+    config_file: "strategies/dca.yaml"
+    pairs: ["BTC/USDT"]
+
+# Risk Management
+risk:
+  # Portfolio Level
+  max_total_exposure: 1.0  # Maximum leverage
+  max_daily_loss: 0.05  # 5% of portfolio
+  max_weekly_loss: 0.10  # 10% of portfolio
+  max_monthly_loss: 0.20  # 20% of portfolio
+  max_drawdown: 0.25  # 25% maximum drawdown
+  
+  # Position Level
+  max_position_size: 0.10  # 10% of portfolio per position
+  max_positions: 10  # Maximum concurrent positions
+  max_leverage: 1.0  # No leverage by default
+  
+  # Per Strategy
+  max_strategy_allocation: 0.40  # 40% max per strategy
+  
+  # Correlation Limits
+  max_correlation: 0.7  # Maximum correlation between positions
+  
+  # Emergency Shutdown
+  emergency_shutdown_loss: 0.30  # 30% total loss triggers shutdown
+  
+  # Position Sizing
+  position_sizing_method: "kelly"  # Options: fixed, percentage, kelly, volatility
+  kelly_fraction: 0.25  # Conservative Kelly
+  
+  # Stop Loss
+  use_stop_loss: true
+  stop_loss_percent: 0.02  # 2% stop loss
+  trailing_stop: true
+  trailing_stop_percent: 0.015  # 1.5% trailing stop
+  
+  # Take Profit
+  use_take_profit: true
+  take_profit_percent: 0.04  # 4% take profit
+  risk_reward_ratio: 2.0  # 2:1 reward/risk
+
+# Data Pipeline
+data:
+  # Real-time data
+  realtime:
+    websocket_reconnect_delay: 5  # seconds
+    max_reconnect_attempts: 10
+    heartbeat_interval: 30  # seconds
+    
+  # Historical data
+  historical:
+    fetch_on_startup: true
+    lookback_days: 365
+    timeframes: ["1m", "5m", "15m", "1h", "4h", "1d"]
+    
+  # Data storage
+  storage:
+    compress_historical: true
+    retention_days: 730  # 2 years
+    
+# Monitoring and Alerts
+monitoring:
+  # Metrics
+  metrics:
+    enabled: true
+    port: 9090
+    update_interval: 10  # seconds
+    
+  # Logging
+  logging:
+    level: "INFO"
+    format: "json"
+    file: "logs/bot.log"
+    max_file_size: "100MB"
+    backup_count: 10
+    
+  # Alerts
+  alerts:
+    enabled: true
+    channels: ["telegram", "email"]
+    
+    # Alert conditions
+    large_profit: 0.05  # Alert on 5%+ profit
+    large_loss: 0.03  # Alert on 3%+ loss
+    risk_limit_breach: true
+    system_error: true
+    exchange_disconnect: true
+    
+# Notification Channels
+notifications:
+  email:
+    enabled: true
+    smtp_host: "smtp.gmail.com"
+    smtp_port: 587
+    from_email: "${EMAIL_FROM}"
+    to_email: "${EMAIL_TO}"
+    username: "${EMAIL_USERNAME}"
+    password: "${EMAIL_PASSWORD}"
+    
+  telegram:
+    enabled: true
+    bot_token: "${TELEGRAM_BOT_TOKEN}"
+    chat_id: "${TELEGRAM_CHAT_ID}"
+    
+  discord:
+    enabled: false
+    webhook_url: "${DISCORD_WEBHOOK_URL}"
+    
+  sms:
+    enabled: false
+    provider: "twilio"
+    account_sid: "${TWILIO_ACCOUNT_SID}"
+    auth_token: "${TWILIO_AUTH_TOKEN}"
+    from_number: "${TWILIO_FROM_NUMBER}"
+    to_number: "${TWILIO_TO_NUMBER}"
+
+# Backtesting
+backtesting:
+  default_start_date: "2023-01-01"
+  default_end_date: "2023-12-31"
+  initial_capital: 10000
+  commission: 0.001  # 0.1% per trade
+  slippage: 0.0005  # 0.05% slippage
+  
+# API Server
+api:
+  host: "0.0.0.0"
+  port: 8000
+  reload: false  # Set to true for development
+  workers: 4
+  
+  # CORS
+  cors:
+    allow_origins: ["http://localhost:3000"]
+    allow_credentials: true
+    allow_methods: ["*"]
+    allow_headers: ["*"]
+    
+  # Rate Limiting
+  rate_limit:
+    enabled: true
+    requests_per_minute: 60
+    
+  # Authentication
+  auth:
+    enabled: true
+    secret_key: "${JWT_SECRET_KEY}"
+    algorithm: "HS256"
+    access_token_expire_minutes: 30
+    refresh_token_expire_days: 7
+
+# Performance Optimization
+performance:
+  use_cache: true
+  cache_ttl: 60  # seconds
+  batch_size: 100  # for bulk operations
+  async_workers: 10
+  
+# Feature Flags
+features:
+  web_dashboard: true
+  mobile_api: false
+  paper_trading: true
+  live_trading: false  # Enable with caution
+  backtesting: true
+  strategy_optimization: true
+  machine_learning: false
+  social_trading: false
+  copy_trading: false
+
+# Development
+development:
+  debug: true
+  mock_exchanges: true
+  load_test_data: true
+  profiling: false
