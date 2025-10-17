@@ -1,0 +1,111 @@
+# MA Crossover Strategy Configuration
+
+strategy:
+  name: "Moving Average Crossover"
+  type: "trend_following"
+  description: "Classic trend following strategy using moving average crossovers"
+  
+# Strategy Parameters
+parameters:
+  # Moving Average Settings
+  fast_period: 10
+  slow_period: 20
+  ma_type: "EMA"  # Options: SMA, EMA, WMA, DEMA, TEMA
+  
+  # Signal Generation
+  signal_threshold: 0.0  # Minimum crossover percentage
+  confirmation_candles: 1  # Wait for N candles to confirm
+  
+  # Entry Rules
+  min_volume: 1000000  # Minimum 24h volume in USDT
+  min_volatility: 0.01  # Minimum volatility for entry
+  max_volatility: 0.10  # Maximum volatility for entry
+  
+  # Exit Rules
+  use_crossover_exit: true  # Exit on opposite crossover
+  use_time_exit: false  # Exit after fixed time
+  max_hold_time: 86400  # Maximum hold time in seconds (24h)
+
+# Position Management
+position:
+  size_method: "percentage"  # Options: fixed, percentage, kelly, volatility
+  size_value: 0.05  # 5% of allocated capital per trade
+  max_positions: 3  # Maximum concurrent positions for this strategy
+  
+# Risk Management (Strategy Level)
+risk:
+  # Stop Loss
+  stop_loss:
+    enabled: true
+    type: "percentage"  # Options: percentage, atr, trailing
+    value: 0.02  # 2% stop loss
+    
+  # Take Profit
+  take_profit:
+    enabled: true
+    type: "percentage"
+    value: 0.04  # 4% take profit
+    
+  # Trailing Stop
+  trailing_stop:
+    enabled: true
+    activation_profit: 0.02  # Activate after 2% profit
+    trail_percent: 0.01  # Trail by 1%
+    
+  # Risk-Reward
+  min_risk_reward: 1.5  # Minimum 1.5:1 risk-reward ratio
+
+# Filters
+filters:
+  # Time Filters
+  time_filter:
+    enabled: false
+    trading_hours:
+      start: "00:00"
+      end: "23:59"
+    timezone: "UTC"
+    trading_days: [1, 2, 3, 4, 5, 6, 7]  # Monday-Sunday
+    
+  # Trend Filter
+  trend_filter:
+    enabled: true
+    use_higher_timeframe: true
+    higher_timeframe: "4h"
+    ma_period: 50
+    only_trade_with_trend: true
+    
+  # Volatility Filter
+  volatility_filter:
+    enabled: true
+    indicator: "ATR"
+    period: 14
+    min_value: 0.01
+    max_value: 0.10
+    
+  # Volume Filter
+  volume_filter:
+    enabled: true
+    min_volume_ratio: 1.0  # Minimum vs average volume
+    lookback_period: 20
+
+# Backtesting Parameters
+backtesting:
+  initial_capital: 10000
+  commission: 0.001  # 0.1%
+  slippage: 0.0005  # 0.05%
+  
+# Optimization Parameters
+optimization:
+  parameters:
+    fast_period:
+      min: 5
+      max: 30
+      step: 5
+      
+    slow_period:
+      min: 20
+      max: 100
+      step: 10
+      
+  objective: "sharpe_ratio"  # Options: total_return, sharpe_ratio, sortino_ratio, max_drawdown
+  method: "grid_search"  # Options: grid_search, random_search, bayesian
