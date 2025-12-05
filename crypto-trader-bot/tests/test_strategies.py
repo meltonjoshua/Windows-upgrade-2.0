@@ -6,12 +6,6 @@ import pytest
 from datetime import datetime
 from typing import Dict, Any
 
-import sys
-from pathlib import Path
-
-# Add src to path
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
-
 from strategies.base import Signal, BaseStrategy
 
 
